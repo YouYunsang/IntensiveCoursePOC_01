@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0cb042548b827414ea0d7fc25e3fe777, type: 3}
+  m_Name: Deck_POC
+  m_EditorClassIdentifier: Assembly-CSharp::PocBattle.Data.DeckDefinitionSO
+  _entries:
+  - _block: {fileID: 11400000, guid: eb942009e13747e46933a6e6726c91d2, type: 2}
+    _count: 2
+  - _block: {fileID: 11400000, guid: dec4e6ac97a4ae442b30005c2d0e40c5, type: 2}
+    _count: 2
+  - _block: {fileID: 11400000, guid: 95f02ed0e2e8b0c4e8866b6b78c5fb62, type: 2}
+    _count: 2
+  - _block: {fileID: 11400000, guid: 0457d2d29f44fa44e824c94af0f96f42, type: 2}
+    _count: 2
+  - _block: {fileID: 11400000, guid: bddbd6ce877ca1546ad825bd4dfd5ec1, type: 2}
+    _count: 2

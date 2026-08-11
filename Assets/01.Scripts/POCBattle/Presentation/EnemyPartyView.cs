@@ -1,0 +1,142 @@
+using System.Collections.Generic;
+using PocBattle.Data;
+using PocBattle.Runtime;
+using UnityEngine;
+
+namespace PocBattle.Presentation
+{
+    /// <summary>
+    /// Creates/reuses 2D enemy sprite views from setup events and routes status/intent events by stable party index.
+    /// </summary>
+    public sealed class EnemyPartyView : MonoBehaviour
+    {
+        [SerializeField, Tooltip("Shared battle event hub.")]
+        private BattleEventChannelSO _eventChannel;
+
+        [SerializeField, Tooltip("World-space enemy placement and hit feedback settings.")]
+        private BattlePresentationSettingsSO _presentationSettings;
+
+        [SerializeField, Tooltip("Generic 2D enemy sprite prefab reused for all POC enemy definitions.")]
+        private EnemyView _enemyViewPrefab;
+
+        /// <summary>Stable party index to reusable enemy view lookup.</summary>
+        private Dictionary<int, EnemyView> _enemyViews;
+
+        /// <summary>Reusable set of enemy indices present in the latest encounter setup.</summary>
+        private HashSet<int> _activeEnemyIndices;
+
+        /// <summary>
+        /// Allocates reusable enemy lookup containers once.
+        /// </summary>
+        private void Awake()
+        {
+            _enemyViews = new Dictionary<int, EnemyView>();
+            _activeEnemyIndices = new HashSet<int>();
+        }
+
+        /// <summary>
+        /// Subscribes to enemy setup, state, intent, and hit events.
+        /// </summary>
+        private void OnEnable()
+        {
+            if (_eventChannel == null)
+            {
+                return;
+            }
+
+            _eventChannel.EnemyPartySetupRequested += HandleEnemyPartySetupRequested;
+            _eventChannel.EnemyStatusChanged += HandleEnemyStatusChanged;
+            _eventChannel.EnemyIntentChanged += HandleEnemyIntentChanged;
+            _eventChannel.EnemyHitVisualRequested += HandleEnemyHitVisualRequested;
+        }
+
+        /// <summary>
+        /// Removes all enemy view event subscriptions.
+        /// </summary>
+        private void OnDisable()
+        {
+            if (_eventChannel == null)
+            {
+                return;
+            }
+
+            _eventChannel.EnemyPartySetupRequested -= HandleEnemyPartySetupRequested;
+            _eventChannel.EnemyStatusChanged -= HandleEnemyStatusChanged;
+            _eventChannel.EnemyIntentChanged -= HandleEnemyIntentChanged;
+            _eventChannel.EnemyHitVisualRequested -= HandleEnemyHitVisualRequested;
+        }
+
+        /// <summary>
+        /// Creates or reuses one sprite view per encounter enemy without storing EnemyController references.
+        /// </summary>
+        private void HandleEnemyPartySetupRequested(IReadOnlyList<EnemySetupSnapshot> snapshots)
+        {
+            _activeEnemyIndices.Clear();
+
+            for (int snapshotIndex = 0; snapshotIndex < snapshots.Count; snapshotIndex++)
+            {
+                EnemySetupSnapshot snapshot = snapshots[snapshotIndex];
+                _activeEnemyIndices.Add(snapshot.EnemyIndex);
+
+                if (!_enemyViews.TryGetValue(snapshot.EnemyIndex, out EnemyView enemyView))
+                {
+                    enemyView = Instantiate(_enemyViewPrefab, transform);
+                    _enemyViews.Add(snapshot.EnemyIndex, enemyView);
+                }
+
+                enemyView.gameObject.SetActive(true);
+                enemyView.name = $"Enemy_{snapshot.EnemyIndex}_{snapshot.DisplayName}";
+                enemyView.transform.position = _presentationSettings.EnemyStartPosition
+                                               + Vector3.right * (_presentationSettings.EnemySpacing * snapshot.EnemyIndex);
+                enemyView.transform.rotation = Quaternion.Euler(_presentationSettings.EnemyEulerAngles);
+                enemyView.transform.localScale = Vector3.one * _presentationSettings.EnemyScale;
+                enemyView.Configure(snapshot);
+            }
+
+            foreach (KeyValuePair<int, EnemyView> enemyPair in _enemyViews)
+            {
+                if (!_activeEnemyIndices.Contains(enemyPair.Key))
+                {
+                    enemyPair.Value.gameObject.SetActive(false);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Routes one immutable enemy status snapshot to its view.
+        /// </summary>
+        private void HandleEnemyStatusChanged(EnemyStatusSnapshot snapshot)
+        {
+            if (_enemyViews.TryGetValue(snapshot.EnemyIndex, out EnemyView enemyView))
+            {
+                enemyView.SetStatus(snapshot);
+            }
+        }
+
+        /// <summary>
+        /// Routes one next-intent snapshot to its view.
+        /// </summary>
+        private void HandleEnemyIntentChanged(EnemyIntentSnapshot snapshot)
+        {
+            if (_enemyViews.TryGetValue(snapshot.EnemyIndex, out EnemyView enemyView))
+            {
+                enemyView.SetIntent(snapshot);
+            }
+        }
+
+        /// <summary>
+        /// Plays hit feedback on the enemy selected by stable party index.
+        /// </summary>
+        private void HandleEnemyHitVisualRequested(int enemyIndex)
+        {
+            if (_enemyViews.TryGetValue(enemyIndex, out EnemyView enemyView))
+            {
+                enemyView.PlayHit(
+                    _presentationSettings.EnemyHitDuration,
+                    _presentationSettings.EnemyHitStrength,
+                    _presentationSettings.HitPunchVibrato,
+                    _presentationSettings.HitPunchElasticity);
+            }
+        }
+    }
+}
