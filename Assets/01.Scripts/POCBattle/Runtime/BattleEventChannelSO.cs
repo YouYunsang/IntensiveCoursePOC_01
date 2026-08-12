@@ -322,8 +322,17 @@ namespace PocBattle.Runtime
         /// <summary>Raised by player input when a cardinal move is pressed.</summary>
         public event Action<Vector2Int> MoveInputRequested;
 
-        /// <summary>Raised by edit pointer input with the clicked board coordinate.</summary>
+        /// <summary>Legacy click event retained for compatibility with older scene scripts; drag editing no longer uses it.</summary>
         public event Action<Vector2Int> BoardCellClicked;
+
+        /// <summary>Raised on placement-edit left-button press with the logical source coordinate.</summary>
+        public event Action<Vector2Int> PlacementDragBeginRequested;
+
+        /// <summary>Raised on placement-edit left-button release over a valid board coordinate.</summary>
+        public event Action<Vector2Int> PlacementDragDropRequested;
+
+        /// <summary>Raised when a held edit pointer is released over GUI or outside the board.</summary>
+        public event Action PlacementDragCancelRequested;
 
         /// <summary>Raised by UI when the current editable/player movement phase should end early.</summary>
         public event Action EndPhaseRequested;
@@ -333,6 +342,9 @@ namespace PocBattle.Runtime
 
         /// <summary>Raised after PlayerMovement finishes either a valid slide or invalid punch.</summary>
         public event Action PlayerMoveVisualCompleted;
+
+        /// <summary>Raised after BoardView finishes an authoritative block layout/drop tween window.</summary>
+        public event Action BlockLayoutVisualCompleted;
 
         /// <summary>Raised whenever high-level battle state changes.</summary>
         public event Action<BattlePhase> PhaseChanged;
@@ -349,8 +361,17 @@ namespace PocBattle.Runtime
         /// <summary>Raised when all block positions should be synchronized to presentation.</summary>
         public event Action<IReadOnlyList<BlockSnapshot>, bool> BlockLayoutChanged;
 
-        /// <summary>Raised when edit phase block selection changes.</summary>
+        /// <summary>Legacy selection event retained for compatibility; the current edit interaction uses drag visuals.</summary>
         public event Action<int> BlockSelectionChanged;
+
+        /// <summary>Raised by edit logic after validating which runtime block may visually lift from the board.</summary>
+        public event Action<int> BlockDragVisualStarted;
+
+        /// <summary>Raised while the edit pointer is held so BoardView can move only the accepted dragged block.</summary>
+        public event Action<Vector3> BlockDragPointerMoved;
+
+        /// <summary>Raised when player movement contacts a block so BoardView can play slime-like feedback.</summary>
+        public event Action<int> BlockHitVisualRequested;
 
         /// <summary>Raised when player presentation should snap to a logical coordinate.</summary>
         public event Action<Vector2Int> PlayerPositionSyncRequested;
@@ -379,8 +400,17 @@ namespace PocBattle.Runtime
         /// <summary>Raises a cardinal movement input request.</summary>
         public void RaiseMoveInputRequested(Vector2Int direction) => MoveInputRequested?.Invoke(direction);
 
-        /// <summary>Raises one edit pointer coordinate selection.</summary>
+        /// <summary>Raises one legacy edit pointer coordinate selection.</summary>
         public void RaiseBoardCellClicked(Vector2Int coordinate) => BoardCellClicked?.Invoke(coordinate);
+
+        /// <summary>Requests the beginning of one press-hold placement drag from a logical source cell.</summary>
+        public void RaisePlacementDragBeginRequested(Vector2Int coordinate) => PlacementDragBeginRequested?.Invoke(coordinate);
+
+        /// <summary>Requests committing one held placement block onto a logical destination cell.</summary>
+        public void RaisePlacementDragDropRequested(Vector2Int coordinate) => PlacementDragDropRequested?.Invoke(coordinate);
+
+        /// <summary>Requests cancellation of the currently held placement block.</summary>
+        public void RaisePlacementDragCancelRequested() => PlacementDragCancelRequested?.Invoke();
 
         /// <summary>Raises a request to end the current player phase early.</summary>
         public void RaiseEndPhaseRequested() => EndPhaseRequested?.Invoke();
@@ -390,6 +420,9 @@ namespace PocBattle.Runtime
 
         /// <summary>Notifies logic that player movement feedback finished.</summary>
         public void RaisePlayerMoveVisualCompleted() => PlayerMoveVisualCompleted?.Invoke();
+
+        /// <summary>Notifies logic that the latest authoritative block layout presentation has settled.</summary>
+        public void RaiseBlockLayoutVisualCompleted() => BlockLayoutVisualCompleted?.Invoke();
 
         /// <summary>Publishes a battle phase change.</summary>
         public void RaisePhaseChanged(BattlePhase phase) => PhaseChanged?.Invoke(phase);
@@ -406,8 +439,17 @@ namespace PocBattle.Runtime
         /// <summary>Publishes all runtime block positions.</summary>
         public void RaiseBlockLayoutChanged(IReadOnlyList<BlockSnapshot> snapshots, bool animate) => BlockLayoutChanged?.Invoke(snapshots, animate);
 
-        /// <summary>Publishes currently selected editable block id, or -1 for none.</summary>
+        /// <summary>Publishes a legacy editable block selection id, or -1 for none.</summary>
         public void RaiseBlockSelectionChanged(int blockId) => BlockSelectionChanged?.Invoke(blockId);
+
+        /// <summary>Starts lift/hold presentation for the runtime block accepted by edit logic.</summary>
+        public void RaiseBlockDragVisualStarted(int blockId) => BlockDragVisualStarted?.Invoke(blockId);
+
+        /// <summary>Publishes the current world-space edit pointer location while left mouse is held.</summary>
+        public void RaiseBlockDragPointerMoved(Vector3 worldPosition) => BlockDragPointerMoved?.Invoke(worldPosition);
+
+        /// <summary>Requests slime-like collision feedback on one stable runtime block id.</summary>
+        public void RaiseBlockHitVisualRequested(int blockId) => BlockHitVisualRequested?.Invoke(blockId);
 
         /// <summary>Requests an immediate player visual position synchronization.</summary>
         public void RaisePlayerPositionSyncRequested(Vector2Int coordinate) => PlayerPositionSyncRequested?.Invoke(coordinate);

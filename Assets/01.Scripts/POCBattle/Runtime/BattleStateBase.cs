@@ -96,9 +96,37 @@ namespace PocBattle.Runtime
         }
 
         /// <summary>
+        /// Handles placement-edit left-button press from a logical source coordinate.
+        /// </summary>
+        public virtual void HandlePlacementDragBeginRequested(Vector2Int coordinate)
+        {
+        }
+
+        /// <summary>
+        /// Handles placement-edit left-button release over a valid logical destination coordinate.
+        /// </summary>
+        public virtual void HandlePlacementDragDropRequested(Vector2Int coordinate)
+        {
+        }
+
+        /// <summary>
+        /// Handles cancellation when a held placement pointer is released outside a valid board drop target.
+        /// </summary>
+        public virtual void HandlePlacementDragCancelRequested()
+        {
+        }
+
+        /// <summary>
         /// Handles manual early phase completion when supported.
         /// </summary>
         public virtual void HandleEndPhaseRequested()
+        {
+        }
+
+        /// <summary>
+        /// Handles completion of an authoritative block layout/drop tween when meaningful for this state.
+        /// </summary>
+        public virtual void HandleBlockLayoutVisualCompleted()
         {
         }
 

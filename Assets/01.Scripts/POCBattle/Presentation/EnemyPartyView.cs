@@ -6,7 +6,7 @@ using UnityEngine;
 namespace PocBattle.Presentation
 {
     /// <summary>
-    /// Creates/reuses 2D enemy sprite views from setup events and routes status/intent events by stable party index.
+    /// Creates/reuses world enemy sprite views from setup events. Enemy status/intent UI is handled separately by OnGUI.
     /// </summary>
     public sealed class EnemyPartyView : MonoBehaviour
     {
@@ -35,7 +35,7 @@ namespace PocBattle.Presentation
         }
 
         /// <summary>
-        /// Subscribes to enemy setup, state, intent, and hit events.
+        /// Subscribes only to enemy world-view setup and hit-feedback events.
         /// </summary>
         private void OnEnable()
         {
@@ -45,13 +45,11 @@ namespace PocBattle.Presentation
             }
 
             _eventChannel.EnemyPartySetupRequested += HandleEnemyPartySetupRequested;
-            _eventChannel.EnemyStatusChanged += HandleEnemyStatusChanged;
-            _eventChannel.EnemyIntentChanged += HandleEnemyIntentChanged;
             _eventChannel.EnemyHitVisualRequested += HandleEnemyHitVisualRequested;
         }
 
         /// <summary>
-        /// Removes all enemy view event subscriptions.
+        /// Removes all enemy world-view event subscriptions.
         /// </summary>
         private void OnDisable()
         {
@@ -61,16 +59,25 @@ namespace PocBattle.Presentation
             }
 
             _eventChannel.EnemyPartySetupRequested -= HandleEnemyPartySetupRequested;
-            _eventChannel.EnemyStatusChanged -= HandleEnemyStatusChanged;
-            _eventChannel.EnemyIntentChanged -= HandleEnemyIntentChanged;
             _eventChannel.EnemyHitVisualRequested -= HandleEnemyHitVisualRequested;
         }
 
         /// <summary>
-        /// Creates or reuses one sprite view per encounter enemy without storing EnemyController references.
+        /// Creates or reuses one sprite view per encounter enemy without storing EnemyController/runtime model references.
         /// </summary>
         private void HandleEnemyPartySetupRequested(IReadOnlyList<EnemySetupSnapshot> snapshots)
         {
+            if (snapshots == null)
+            {
+                return;
+            }
+
+            if (_enemyViewPrefab == null || _presentationSettings == null)
+            {
+                Debug.LogError("EnemyPartyView cannot build enemy views because prefab or presentation settings are missing.", this);
+                return;
+            }
+
             _activeEnemyIndices.Clear();
 
             for (int snapshotIndex = 0; snapshotIndex < snapshots.Count; snapshotIndex++)
@@ -103,32 +110,15 @@ namespace PocBattle.Presentation
         }
 
         /// <summary>
-        /// Routes one immutable enemy status snapshot to its view.
-        /// </summary>
-        private void HandleEnemyStatusChanged(EnemyStatusSnapshot snapshot)
-        {
-            if (_enemyViews.TryGetValue(snapshot.EnemyIndex, out EnemyView enemyView))
-            {
-                enemyView.SetStatus(snapshot);
-            }
-        }
-
-        /// <summary>
-        /// Routes one next-intent snapshot to its view.
-        /// </summary>
-        private void HandleEnemyIntentChanged(EnemyIntentSnapshot snapshot)
-        {
-            if (_enemyViews.TryGetValue(snapshot.EnemyIndex, out EnemyView enemyView))
-            {
-                enemyView.SetIntent(snapshot);
-            }
-        }
-
-        /// <summary>
         /// Plays hit feedback on the enemy selected by stable party index.
         /// </summary>
         private void HandleEnemyHitVisualRequested(int enemyIndex)
         {
+            if (_presentationSettings == null)
+            {
+                return;
+            }
+
             if (_enemyViews.TryGetValue(enemyIndex, out EnemyView enemyView))
             {
                 enemyView.PlayHit(

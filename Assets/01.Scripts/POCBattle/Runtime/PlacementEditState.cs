@@ -5,15 +5,29 @@ using UnityEngine;
 namespace PocBattle.Runtime
 {
     /// <summary>
-    /// Handles click-select placement editing, empty-cell moves, and optional editable-block swaps.
+    /// Explicit edit interaction states used instead of drag/selection boolean combinations.
+    /// </summary>
+    internal enum PlacementEditExecutionState
+    {
+        Idle = 0,
+        Dragging = 1,
+        Settling = 2
+    }
+
+    /// <summary>
+    /// Handles press-hold-drag placement editing, empty-cell drops, and optional editable-block swaps.
+    /// Logical block coordinates remain unchanged until the pointer is released on a valid destination.
     /// </summary>
     public sealed class PlacementEditState : BattleStateBase
     {
-        /// <summary>Sentinel used when no block is selected.</summary>
-        private const int NO_SELECTED_BLOCK_ID = -1;
+        /// <summary>Sentinel used when no editable block is being dragged.</summary>
+        private const int NO_DRAGGED_BLOCK_ID = -1;
 
-        /// <summary>Currently selected editable runtime block id.</summary>
-        private int _selectedBlockId;
+        /// <summary>Current edit interaction substate.</summary>
+        private PlacementEditExecutionState _executionState;
+
+        /// <summary>Stable runtime id of the editable block currently held by the pointer.</summary>
+        private int _draggedBlockId;
 
         /// <summary>
         /// Creates placement edit state.
@@ -27,89 +41,168 @@ namespace PocBattle.Runtime
             : base(context, presentationSettings, eventChannel, publisher)
         {
             BoardSettings = boardSettings;
-            _selectedBlockId = NO_SELECTED_BLOCK_ID;
+            _executionState = PlacementEditExecutionState.Idle;
+            _draggedBlockId = NO_DRAGGED_BLOCK_ID;
         }
 
         /// <summary>Board gameplay settings used for swap policy.</summary>
         private BattleBoardSettingsSO BoardSettings { get; }
 
         /// <summary>
-        /// Clears stale selection every time edit phase begins.
+        /// Resets stale drag state every time edit phase begins.
         /// </summary>
         public override void Enter()
         {
-            SetSelection(NO_SELECTED_BLOCK_ID);
+            ResetDragState();
             Publisher.PublishTurnResources();
         }
 
         /// <summary>
-        /// Clears visual selection when leaving edit phase.
+        /// Cancels an unfinished drag before another battle phase becomes active.
         /// </summary>
         public override void Exit()
         {
-            SetSelection(NO_SELECTED_BLOCK_ID);
+            CancelActiveDrag();
         }
 
         /// <summary>
-        /// Selects an editable block or performs one valid move/swap edit.
+        /// Starts dragging only when the pressed coordinate contains an editable deck block and an edit remains.
         /// </summary>
-        public override void HandleBoardCellClicked(Vector2Int coordinate)
+        public override void HandlePlacementDragBeginRequested(Vector2Int coordinate)
         {
+            if (_executionState != PlacementEditExecutionState.Idle || Context.RemainingEditCount <= 0)
+            {
+                return;
+            }
+
             if (!Context.Board.IsInside(coordinate) || Context.Board.IsWall(coordinate) || coordinate == Context.Board.PlayerPosition)
             {
                 return;
             }
 
-            BlockRuntime clickedBlock = Context.Board.GetBlock(coordinate);
-            if (_selectedBlockId == NO_SELECTED_BLOCK_ID)
-            {
-                if (clickedBlock != null && !clickedBlock.IsTrap)
-                {
-                    SetSelection(clickedBlock.Id);
-                }
-
-                return;
-            }
-
-            BlockRuntime selectedBlock = FindBlockById(_selectedBlockId);
-            if (selectedBlock == null)
-            {
-                SetSelection(NO_SELECTED_BLOCK_ID);
-                return;
-            }
-
-            if (clickedBlock != null && clickedBlock.Id == selectedBlock.Id)
-            {
-                SetSelection(NO_SELECTED_BLOCK_ID);
-                return;
-            }
-
-            if (Context.RemainingEditCount <= 0 || (clickedBlock != null && clickedBlock.IsTrap))
+            BlockRuntime block = Context.Board.GetBlock(coordinate);
+            if (block == null || block.IsTrap)
             {
                 return;
             }
 
-            bool editSucceeded = clickedBlock == null
-                ? Context.Board.TryMoveBlock(selectedBlock.Coordinate, coordinate)
-                : BoardSettings.AllowBlockSwap && Context.Board.TrySwapBlocks(selectedBlock.Coordinate, coordinate);
-
-            if (!editSucceeded)
-            {
-                return;
-            }
-
-            Context.TryConsumeEdit();
-            Publisher.PublishBlockLayout(true);
-            Publisher.PublishTurnResources();
-            SetSelection(NO_SELECTED_BLOCK_ID);
+            _draggedBlockId = block.Id;
+            _executionState = PlacementEditExecutionState.Dragging;
+            EventChannel.RaiseBlockDragVisualStarted(block.Id);
         }
 
         /// <summary>
-        /// Allows the player to enter movement even when edit counts remain.
+        /// Commits one move/swap when the released coordinate is valid, otherwise returns the held block to its logical origin.
+        /// </summary>
+        public override void HandlePlacementDragDropRequested(Vector2Int coordinate)
+        {
+            if (_executionState != PlacementEditExecutionState.Dragging)
+            {
+                return;
+            }
+
+            BlockRuntime draggedBlock = FindBlockById(_draggedBlockId);
+            if (draggedBlock == null)
+            {
+                CompleteDrag(false);
+                return;
+            }
+
+            bool editSucceeded = TryCommitDrop(draggedBlock, coordinate);
+            CompleteDrag(editSucceeded);
+        }
+
+        /// <summary>
+        /// Cancels the current drag when the pointer is released over OnGUI or outside the board.
+        /// </summary>
+        public override void HandlePlacementDragCancelRequested()
+        {
+            if (_executionState == PlacementEditExecutionState.Dragging)
+            {
+                CompleteDrag(false);
+            }
+        }
+
+        /// <summary>
+        /// Re-enables edit input only after BoardView reports that the previous drop/swap layout animation has settled.
+        /// </summary>
+        public override void HandleBlockLayoutVisualCompleted()
+        {
+            if (_executionState == PlacementEditExecutionState.Settling)
+            {
+                _executionState = PlacementEditExecutionState.Idle;
+            }
+        }
+
+        /// <summary>
+        /// Allows the player to enter movement even when edit counts remain; an active drag is first returned to its origin.
         /// </summary>
         public override void HandleEndPhaseRequested()
         {
+            CancelActiveDrag();
             RequestTransition(BattlePhase.Movement, 0f);
+        }
+
+        /// <summary>
+        /// Attempts a logical drop without changing board state until every destination rule has passed.
+        /// </summary>
+        private bool TryCommitDrop(BlockRuntime draggedBlock, Vector2Int destination)
+        {
+            if (Context.RemainingEditCount <= 0
+                || !Context.Board.IsInside(destination)
+                || Context.Board.IsWall(destination)
+                || destination == Context.Board.PlayerPosition
+                || destination == draggedBlock.Coordinate)
+            {
+                return false;
+            }
+
+            BlockRuntime destinationBlock = Context.Board.GetBlock(destination);
+            if (destinationBlock != null && destinationBlock.IsTrap)
+            {
+                return false;
+            }
+
+            if (destinationBlock == null)
+            {
+                return Context.Board.TryMoveBlock(draggedBlock.Coordinate, destination);
+            }
+
+            return BoardSettings.AllowBlockSwap
+                   && Context.Board.TrySwapBlocks(draggedBlock.Coordinate, destination);
+        }
+
+        /// <summary>
+        /// Finishes the interaction, consumes one edit only on a successful logical change, and publishes the authoritative layout.
+        /// </summary>
+        private void CompleteDrag(bool editSucceeded)
+        {
+            _draggedBlockId = NO_DRAGGED_BLOCK_ID;
+            _executionState = PlacementEditExecutionState.Settling;
+
+            if (editSucceeded)
+            {
+                Context.TryConsumeEdit();
+                Publisher.PublishTurnResources();
+            }
+
+            // The same authoritative layout drives both a successful drop and a cancelled return-to-origin animation.
+            Publisher.PublishBlockLayout(true);
+        }
+
+        /// <summary>
+        /// Returns an unfinished held block to its authoritative board coordinate without consuming an edit.
+        /// </summary>
+        private void CancelActiveDrag()
+        {
+            if (_executionState == PlacementEditExecutionState.Dragging)
+            {
+                ResetDragState();
+                Publisher.PublishBlockLayout(true);
+                return;
+            }
+
+            ResetDragState();
         }
 
         /// <summary>
@@ -130,12 +223,12 @@ namespace PocBattle.Runtime
         }
 
         /// <summary>
-        /// Updates runtime selection and publishes it for block highlight presentation.
+        /// Clears the explicit edit interaction state.
         /// </summary>
-        private void SetSelection(int blockId)
+        private void ResetDragState()
         {
-            _selectedBlockId = blockId;
-            EventChannel.RaiseBlockSelectionChanged(blockId);
+            _executionState = PlacementEditExecutionState.Idle;
+            _draggedBlockId = NO_DRAGGED_BLOCK_ID;
         }
     }
 }

@@ -33,6 +33,30 @@ namespace PocBattle.Data
         [SerializeField, Tooltip("Duration of block reposition tweens.")]
         private float _blockMoveDuration = 0.18f;
 
+        [Header("Block Edit Drag")]
+        [SerializeField, Tooltip("World-space height added while an editable block is held by the mouse.")]
+        private float _blockDragLiftHeight = 0.6f;
+
+        [SerializeField, Tooltip("Duration of the lift-from-floor tween when drag begins.")]
+        private float _blockDragLiftDuration = 0.12f;
+
+        [SerializeField, Tooltip("Uniform scale multiplier applied while an editable block is held.")]
+        private float _blockDragScale = 1.08f;
+
+        [SerializeField, Tooltip("Duration used to place or return a held block when the mouse button is released.")]
+        private float _blockDropDuration = 0.16f;
+
+        [Header("Block Hit Bounce")]
+        [SerializeField, Tooltip("Relative XYZ scale used for the first slime-like squash after player collision.")]
+        private Vector3 _blockHitSquashScale = new Vector3(1.18f, 0.7f, 1.18f);
+
+        [SerializeField, Tooltip("Relative XYZ scale used for the rebound stretch after player collision.")]
+        private Vector3 _blockHitStretchScale = new Vector3(0.9f, 1.25f, 0.9f);
+
+        [SerializeField, Tooltip("Total duration of the block squash/stretch/settle collision sequence.")]
+        private float _blockHitBounceDuration = 0.32f;
+
+        [Header("Board Colors")]
         [SerializeField, Tooltip("Normal floor color.")]
         private Color _normalCellColor = new Color(0.12f, 0.12f, 0.14f, 1f);
 
@@ -118,6 +142,27 @@ namespace PocBattle.Data
         /// <summary>Gets block tween duration.</summary>
         public float BlockMoveDuration => _blockMoveDuration;
 
+        /// <summary>Gets height added while a block is held.</summary>
+        public float BlockDragLiftHeight => _blockDragLiftHeight;
+
+        /// <summary>Gets drag lift tween duration.</summary>
+        public float BlockDragLiftDuration => _blockDragLiftDuration;
+
+        /// <summary>Gets held block scale multiplier.</summary>
+        public float BlockDragScale => _blockDragScale;
+
+        /// <summary>Gets held block drop/return duration.</summary>
+        public float BlockDropDuration => _blockDropDuration;
+
+        /// <summary>Gets relative hit squash scale.</summary>
+        public Vector3 BlockHitSquashScale => _blockHitSquashScale;
+
+        /// <summary>Gets relative hit stretch scale.</summary>
+        public Vector3 BlockHitStretchScale => _blockHitStretchScale;
+
+        /// <summary>Gets total slime-like block hit bounce duration.</summary>
+        public float BlockHitBounceDuration => _blockHitBounceDuration;
+
         /// <summary>Gets normal floor color.</summary>
         public Color NormalCellColor => _normalCellColor;
 
@@ -186,6 +231,13 @@ namespace PocBattle.Data
             _blockHeight = Mathf.Max(0.05f, _blockHeight);
             _selectedBlockScale = Mathf.Max(1f, _selectedBlockScale);
             _blockMoveDuration = Mathf.Max(0f, _blockMoveDuration);
+            _blockDragLiftHeight = Mathf.Max(0f, _blockDragLiftHeight);
+            _blockDragLiftDuration = Mathf.Max(0.01f, _blockDragLiftDuration);
+            _blockDragScale = Mathf.Max(1f, _blockDragScale);
+            _blockDropDuration = Mathf.Max(0.01f, _blockDropDuration);
+            _blockHitSquashScale = ClampPositiveScale(_blockHitSquashScale);
+            _blockHitStretchScale = ClampPositiveScale(_blockHitStretchScale);
+            _blockHitBounceDuration = Mathf.Max(0.03f, _blockHitBounceDuration);
             _moveSecondsPerCell = Mathf.Max(0.01f, _moveSecondsPerCell);
             _invalidMoveDistance = Mathf.Max(0.01f, _invalidMoveDistance);
             _invalidMoveDuration = Mathf.Max(0.01f, _invalidMoveDuration);
@@ -200,6 +252,17 @@ namespace PocBattle.Data
             _enemySpacing = Mathf.Max(0.1f, _enemySpacing);
             _enemyScale = Mathf.Max(0.1f, _enemyScale);
             _pointerRayDistance = Mathf.Max(1f, _pointerRayDistance);
+        }
+
+        /// <summary>
+        /// Prevents invalid zero/negative relative squash or stretch axes.
+        /// </summary>
+        private static Vector3 ClampPositiveScale(Vector3 scale)
+        {
+            return new Vector3(
+                Mathf.Max(0.01f, scale.x),
+                Mathf.Max(0.01f, scale.y),
+                Mathf.Max(0.01f, scale.z));
         }
     }
 }

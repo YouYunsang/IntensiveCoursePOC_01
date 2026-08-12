@@ -97,6 +97,7 @@ namespace PocBattle.Runtime
 
             if (completedResult.IsValid && completedResult.HitBlock != null)
             {
+                EventChannel.RaiseBlockHitVisualRequested(completedResult.HitBlock.Id);
                 int healthBeforeEffect = Context.Player.CurrentHealth;
                 Context.BlockEffects.Apply(completedResult.HitBlock);
                 Publisher.PublishTurnEffects();

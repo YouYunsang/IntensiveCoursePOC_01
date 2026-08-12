@@ -34,7 +34,8 @@ namespace PocBattle.Runtime
             Publisher.PublishTurnEffects();
             Publisher.PublishBlockLayout(true);
             Publisher.PublishPlayerPositionSync();
-            RequestTransition(BattlePhase.PlacementEdit, 0f);
+            // Keep edit input disabled until the shuffle presentation reaches authoritative cell centers.
+            RequestTransition(BattlePhase.PlacementEdit, PresentationSettings.BlockMoveDuration);
         }
     }
 }

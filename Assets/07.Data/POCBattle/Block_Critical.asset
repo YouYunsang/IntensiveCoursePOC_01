@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: Block_Critical
   m_EditorClassIdentifier: Assembly-CSharp::PocBattle.Data.BlockDefinitionSO
   _displayName: Block
-  _displayColor: {r: 1, g: 1, b: 1, a: 1}
+  _displayColor: {r: 1, g: 0.5385013, b: 0, a: 1}
   _isTrap: 0
-  _effects: []
+  _effects:
+  - {fileID: 11400000, guid: 2146f0beb781a7c44bc3eff46d71904a, type: 2}

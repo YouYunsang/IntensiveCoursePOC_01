@@ -53,8 +53,12 @@ namespace PocBattle.Runtime
 
             _eventChannel.MoveInputRequested += HandleMoveInputRequested;
             _eventChannel.BoardCellClicked += HandleBoardCellClicked;
+            _eventChannel.PlacementDragBeginRequested += HandlePlacementDragBeginRequested;
+            _eventChannel.PlacementDragDropRequested += HandlePlacementDragDropRequested;
+            _eventChannel.PlacementDragCancelRequested += HandlePlacementDragCancelRequested;
             _eventChannel.EndPhaseRequested += HandleEndPhaseRequested;
             _eventChannel.PlayerMoveVisualCompleted += HandlePlayerMoveVisualCompleted;
+            _eventChannel.BlockLayoutVisualCompleted += HandleBlockLayoutVisualCompleted;
             _eventChannel.RestartRequested += HandleRestartRequested;
         }
 
@@ -67,8 +71,12 @@ namespace PocBattle.Runtime
             {
                 _eventChannel.MoveInputRequested -= HandleMoveInputRequested;
                 _eventChannel.BoardCellClicked -= HandleBoardCellClicked;
+                _eventChannel.PlacementDragBeginRequested -= HandlePlacementDragBeginRequested;
+                _eventChannel.PlacementDragDropRequested -= HandlePlacementDragDropRequested;
+                _eventChannel.PlacementDragCancelRequested -= HandlePlacementDragCancelRequested;
                 _eventChannel.EndPhaseRequested -= HandleEndPhaseRequested;
                 _eventChannel.PlayerMoveVisualCompleted -= HandlePlayerMoveVisualCompleted;
+                _eventChannel.BlockLayoutVisualCompleted -= HandleBlockLayoutVisualCompleted;
                 _eventChannel.RestartRequested -= HandleRestartRequested;
             }
 
@@ -218,6 +226,33 @@ namespace PocBattle.Runtime
         }
 
         /// <summary>
+        /// Forwards placement-edit press into the currently active state.
+        /// </summary>
+        private void HandlePlacementDragBeginRequested(Vector2Int coordinate)
+        {
+            _stateMachine?.CurrentState?.HandlePlacementDragBeginRequested(coordinate);
+            ProcessCurrentStateTransitionRequest();
+        }
+
+        /// <summary>
+        /// Forwards placement-edit drop into the currently active state.
+        /// </summary>
+        private void HandlePlacementDragDropRequested(Vector2Int coordinate)
+        {
+            _stateMachine?.CurrentState?.HandlePlacementDragDropRequested(coordinate);
+            ProcessCurrentStateTransitionRequest();
+        }
+
+        /// <summary>
+        /// Forwards placement-edit drag cancellation into the currently active state.
+        /// </summary>
+        private void HandlePlacementDragCancelRequested()
+        {
+            _stateMachine?.CurrentState?.HandlePlacementDragCancelRequested();
+            ProcessCurrentStateTransitionRequest();
+        }
+
+        /// <summary>
         /// Forwards manual phase completion into the currently active state.
         /// </summary>
         private void HandleEndPhaseRequested()
@@ -232,6 +267,15 @@ namespace PocBattle.Runtime
         private void HandlePlayerMoveVisualCompleted()
         {
             _stateMachine?.CurrentState?.HandlePlayerMoveVisualCompleted();
+            ProcessCurrentStateTransitionRequest();
+        }
+
+        /// <summary>
+        /// Forwards block layout tween completion so PlacementEditState can unlock the next drag only after visuals settle.
+        /// </summary>
+        private void HandleBlockLayoutVisualCompleted()
+        {
+            _stateMachine?.CurrentState?.HandleBlockLayoutVisualCompleted();
             ProcessCurrentStateTransitionRequest();
         }
 

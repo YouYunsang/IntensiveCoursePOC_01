@@ -20,6 +20,13 @@ MonoBehaviour:
   _blockHeight: 0.7
   _selectedBlockScale: 1.12
   _blockMoveDuration: 0.18
+  _blockDragLiftHeight: 0.6
+  _blockDragLiftDuration: 0.12
+  _blockDragScale: 1.08
+  _blockDropDuration: 0.16
+  _blockHitSquashScale: {x: 1.18, y: 0.7, z: 1.18}
+  _blockHitStretchScale: {x: 0.9, y: 1.25, z: 0.9}
+  _blockHitBounceDuration: 0.32
   _normalCellColor: {r: 0.12, g: 0.12, b: 0.14, a: 1}
   _wallCellColor: {r: 0.28, g: 0.3, b: 0.34, a: 1}
   _playerCenterY: 0.75
@@ -34,8 +41,8 @@ MonoBehaviour:
   _playerHitStrength: 0.12
   _hitPunchVibrato: 6
   _hitPunchElasticity: 0.5
-  _enemyStartPosition: {x: -1.5, y: 2.2, z: 4.1}
+  _enemyStartPosition: {x: 0, y: 2, z: 6.5}
   _enemySpacing: 3
   _enemyEulerAngles: {x: 45, y: 0, z: 0}
-  _enemyScale: 1.7
+  _enemyScale: 2.9
   _pointerRayDistance: 100

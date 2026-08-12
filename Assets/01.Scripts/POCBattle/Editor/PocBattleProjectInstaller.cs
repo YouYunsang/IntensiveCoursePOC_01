@@ -4,13 +4,11 @@ using System.IO;
 using PocBattle.Data;
 using PocBattle.Presentation;
 using PocBattle.Runtime;
+using TMPro;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
-using UnityEngine.EventSystems;
-using UnityEngine.InputSystem.UI;
 using UnityEngine.SceneManagement;
-using UnityEngine.UI;
 
 namespace PocBattle.Editor
 {
@@ -477,7 +475,8 @@ namespace PocBattle.Editor
         }
 
         /// <summary>
-        /// Creates or updates generic cell/block/player/enemy/HUD prefabs used by the generated scene.
+        /// Creates or updates generic cell/block/player/enemy prefabs used by the generated scene.
+        /// POC HUD presentation is rendered by BattleOnGuiPresenter and therefore needs no Canvas prefab.
         /// </summary>
         private static GeneratedPrefabs CreateOrUpdatePrefabs(GeneratedAssets assets)
         {
@@ -488,8 +487,7 @@ namespace PocBattle.Editor
             BlockView blockPrefab = CreateBlockPrefab(baseMaterial);
             PlayerController playerPrefab = CreatePlayerPrefab(playerMaterial, assets);
             EnemyView enemyPrefab = CreateEnemyPrefab(enemySprite);
-            BattleHudPresenter hudPrefab = CreateHudPrefab(assets.EventChannel);
-            return new GeneratedPrefabs(cellPrefab, blockPrefab, playerPrefab, enemyPrefab, hudPrefab);
+            return new GeneratedPrefabs(cellPrefab, blockPrefab, playerPrefab, enemyPrefab);
         }
 
         /// <summary>
@@ -588,10 +586,38 @@ namespace PocBattle.Editor
             MeshRenderer renderer = instance.GetComponent<MeshRenderer>();
             renderer.sharedMaterial = material;
             BlockView view = instance.AddComponent<BlockView>();
+            TMP_Text effectText = CreateBlockEffectText(instance.transform);
             SetObjectReference(view, "_renderer", renderer);
+            SetObjectReference(view, "_effectText", effectText);
             GameObject prefab = PrefabUtility.SaveAsPrefabAsset(instance, path);
             UnityEngine.Object.DestroyImmediate(instance);
             return prefab.GetComponent<BlockView>();
+        }
+
+        /// <summary>
+        /// Creates the world-space TMP child used by every generic block to display its data-driven effect text.
+        /// </summary>
+        private static TMP_Text CreateBlockEffectText(Transform parent)
+        {
+            const float TEXT_LOCAL_Y = 0.66f;
+            const float TEXT_RECT_SIZE = 0.8f;
+            const float TEXT_FONT_SIZE_MIN = 2f;
+            const float TEXT_FONT_SIZE_MAX = 4f;
+
+            GameObject textObject = new GameObject("Text (TMP)", typeof(RectTransform));
+            textObject.transform.SetParent(parent, false);
+            RectTransform rectTransform = textObject.GetComponent<RectTransform>();
+            rectTransform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            rectTransform.localPosition = new Vector3(0f, TEXT_LOCAL_Y, 0f);
+            rectTransform.sizeDelta = new Vector2(TEXT_RECT_SIZE, TEXT_RECT_SIZE);
+
+            TextMeshPro text = textObject.AddComponent<TextMeshPro>();
+            text.text = "Block";
+            text.alignment = TextAlignmentOptions.Center;
+            text.enableAutoSizing = true;
+            text.fontSizeMin = TEXT_FONT_SIZE_MIN;
+            text.fontSizeMax = TEXT_FONT_SIZE_MAX;
+            return text;
         }
 
         /// <summary>
@@ -617,7 +643,7 @@ namespace PocBattle.Editor
         }
 
         /// <summary>
-        /// Creates a 2D SpriteRenderer enemy prefab with world-space TextMesh status and intent labels.
+        /// Creates a 2D SpriteRenderer-only enemy prefab. POC HP/shield/intent information is rendered through OnGUI.
         /// </summary>
         private static EnemyView CreateEnemyPrefab(Sprite sprite)
         {
@@ -627,12 +653,7 @@ namespace PocBattle.Editor
             spriteRenderer.sprite = sprite;
             spriteRenderer.sortingOrder = 1;
             EnemyView view = instance.AddComponent<EnemyView>();
-
-            TextMesh statusText = CreateWorldText(instance.transform, "StatusText", new Vector3(0f, -0.9f, 0f));
-            TextMesh intentText = CreateWorldText(instance.transform, "IntentText", new Vector3(0f, 0.9f, 0f));
             SetObjectReference(view, "_spriteRenderer", spriteRenderer);
-            SetObjectReference(view, "_statusText", statusText);
-            SetObjectReference(view, "_intentText", intentText);
 
             GameObject prefab = PrefabUtility.SaveAsPrefabAsset(instance, path);
             UnityEngine.Object.DestroyImmediate(instance);
@@ -640,152 +661,18 @@ namespace PocBattle.Editor
         }
 
         /// <summary>
-        /// Creates one child TextMesh suitable for compact world-space POC labels.
-        /// </summary>
-        private static TextMesh CreateWorldText(Transform parent, string name, Vector3 localPosition)
-        {
-            GameObject textObject = new GameObject(name);
-            textObject.transform.SetParent(parent, false);
-            textObject.transform.localPosition = localPosition;
-            TextMesh textMesh = textObject.AddComponent<TextMesh>();
-            textMesh.anchor = TextAnchor.MiddleCenter;
-            textMesh.alignment = TextAlignment.Center;
-            textMesh.fontSize = 48;
-            textMesh.characterSize = 0.05f;
-            textMesh.color = Color.white;
-            return textMesh;
-        }
-
-        /// <summary>
-        /// Creates a Screen Space Overlay POC HUD prefab driven only by BattleHudPresenter snapshots.
-        /// </summary>
-        private static BattleHudPresenter CreateHudPrefab(BattleEventChannelSO eventChannel)
-        {
-            string path = $"{PREFAB_ROOT}/BattleHud.prefab";
-            GameObject root = new GameObject("BattleHud", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
-            Canvas canvas = root.GetComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            CanvasScaler scaler = root.GetComponent<CanvasScaler>();
-            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1920f, 1080f);
-
-            BattleHudPresenter presenter = root.AddComponent<BattleHudPresenter>();
-            Text phaseText = CreateUiText(root.transform, "PhaseText", new Vector2(30f, -30f), new Vector2(650f, 50f), 28, TextAnchor.UpperLeft);
-            Text playerText = CreateUiText(root.transform, "PlayerStatusText", new Vector2(30f, -80f), new Vector2(850f, 50f), 24, TextAnchor.UpperLeft);
-            Text resourceText = CreateUiText(root.transform, "ResourceText", new Vector2(30f, -125f), new Vector2(850f, 50f), 24, TextAnchor.UpperLeft);
-            Text effectText = CreateUiText(root.transform, "EffectText", new Vector2(30f, -170f), new Vector2(1050f, 50f), 24, TextAnchor.UpperLeft);
-            Button endPhaseButton = CreateUiButton(root.transform, "EndPhaseButton", new Vector2(-160f, 80f), new Vector2(260f, 70f), out Text endPhaseText);
-            Button restartButton = CreateUiButton(root.transform, "RestartButton", new Vector2(0f, -100f), new Vector2(260f, 70f), out Text restartText);
-            restartText.text = "RESTART";
-            Text resultText = CreateUiText(root.transform, "ResultText", Vector2.zero, new Vector2(700f, 120f), 52, TextAnchor.MiddleCenter, true);
-            resultText.text = string.Empty;
-            resultText.gameObject.SetActive(false);
-            restartButton.gameObject.SetActive(false);
-
-            SetObjectReference(presenter, "_eventChannel", eventChannel);
-            SetObjectReference(presenter, "_phaseText", phaseText);
-            SetObjectReference(presenter, "_playerStatusText", playerText);
-            SetObjectReference(presenter, "_resourceText", resourceText);
-            SetObjectReference(presenter, "_effectText", effectText);
-            SetObjectReference(presenter, "_endPhaseButton", endPhaseButton);
-            SetObjectReference(presenter, "_endPhaseButtonText", endPhaseText);
-            SetObjectReference(presenter, "_resultText", resultText);
-            SetObjectReference(presenter, "_restartButton", restartButton);
-
-            GameObject prefab = PrefabUtility.SaveAsPrefabAsset(root, path);
-            UnityEngine.Object.DestroyImmediate(root);
-            return prefab.GetComponent<BattleHudPresenter>();
-        }
-
-        /// <summary>
-        /// Creates one overlay UI Text anchored either top-left or screen-center.
-        /// </summary>
-        private static Text CreateUiText(
-            Transform parent,
-            string name,
-            Vector2 anchoredPosition,
-            Vector2 size,
-            int fontSize,
-            TextAnchor alignment,
-            bool centered = false)
-        {
-            GameObject textObject = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Text));
-            textObject.transform.SetParent(parent, false);
-            RectTransform rectTransform = textObject.GetComponent<RectTransform>();
-            rectTransform.sizeDelta = size;
-
-            if (centered)
-            {
-                rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
-                rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
-                rectTransform.pivot = new Vector2(0.5f, 0.5f);
-            }
-            else
-            {
-                rectTransform.anchorMin = new Vector2(0f, 1f);
-                rectTransform.anchorMax = new Vector2(0f, 1f);
-                rectTransform.pivot = new Vector2(0f, 1f);
-            }
-
-            rectTransform.anchoredPosition = anchoredPosition;
-            Text text = textObject.GetComponent<Text>();
-            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            text.fontSize = fontSize;
-            text.alignment = alignment;
-            text.color = Color.white;
-            text.raycastTarget = false;
-            return text;
-        }
-
-        /// <summary>
-        /// Creates one overlay UI Button and returns its child label through an out parameter.
-        /// </summary>
-        private static Button CreateUiButton(
-            Transform parent,
-            string name,
-            Vector2 anchoredPosition,
-            Vector2 size,
-            out Text label)
-        {
-            GameObject buttonObject = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
-            buttonObject.transform.SetParent(parent, false);
-            RectTransform rectTransform = buttonObject.GetComponent<RectTransform>();
-            rectTransform.sizeDelta = size;
-            rectTransform.anchorMin = anchoredPosition.x < 0f ? new Vector2(1f, 0f) : new Vector2(0.5f, 0.5f);
-            rectTransform.anchorMax = rectTransform.anchorMin;
-            rectTransform.pivot = new Vector2(0.5f, 0.5f);
-            rectTransform.anchoredPosition = anchoredPosition;
-
-            Image image = buttonObject.GetComponent<Image>();
-            image.color = new Color(0.15f, 0.15f, 0.18f, 0.95f);
-            Button button = buttonObject.GetComponent<Button>();
-            button.targetGraphic = image;
-
-            label = CreateUiText(buttonObject.transform, "Label", Vector2.zero, size, 24, TextAnchor.MiddleCenter, true);
-            label.text = "END PHASE";
-            RectTransform labelRect = label.GetComponent<RectTransform>();
-            labelRect.anchorMin = Vector2.zero;
-            labelRect.anchorMax = Vector2.one;
-            labelRect.offsetMin = Vector2.zero;
-            labelRect.offsetMax = Vector2.zero;
-            labelRect.sizeDelta = Vector2.zero;
-            return button;
-        }
-
-        /// <summary>
-        /// Creates a standalone test scene using event-channel composition and preserves the user's existing GameScene untouched.
+        /// Creates a standalone test scene using event-channel composition and OnGUI POC presentation.
+        /// The user's existing GameScene remains untouched.
         /// </summary>
         private static void CreateOrReplaceScene(GeneratedAssets assets, GeneratedPrefabs prefabs)
         {
             Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             CreateCamera(assets);
             CreateDirectionalLight();
-            CreateEventSystem();
             CreateBattleRoot(assets);
             CreateBoardRoot(assets, prefabs);
-            PrefabUtility.InstantiatePrefab(prefabs.PlayerPrefab.gameObject, scene);
+            CreatePlayerRoot(scene, assets, prefabs);
             CreateEnemyRoot(assets, prefabs);
-            PrefabUtility.InstantiatePrefab(prefabs.HudPrefab.gameObject, scene);
             EditorSceneManager.SaveScene(scene, SCENE_PATH);
         }
 
@@ -824,15 +711,7 @@ namespace PocBattle.Editor
         }
 
         /// <summary>
-        /// Creates a UI EventSystem using the Input System UI module already expected by the provided project.
-        /// </summary>
-        private static void CreateEventSystem()
-        {
-            new GameObject("EventSystem", typeof(EventSystem), typeof(InputSystemUIInputModule));
-        }
-
-        /// <summary>
-        /// Creates the battle composition root and assigns only ScriptableObject data/event references.
+        /// Creates the battle composition root and its event-driven POC OnGUI presenter.
         /// </summary>
         private static void CreateBattleRoot(GeneratedAssets assets)
         {
@@ -844,6 +723,28 @@ namespace PocBattle.Editor
             SetObjectReference(battleController, "_deck", assets.Deck);
             SetObjectReference(battleController, "_encounter", assets.EncounterA);
             SetObjectReference(battleController, "_eventChannel", assets.EventChannel);
+
+            BattleOnGuiPresenter onGuiPresenter = battleRoot.AddComponent<BattleOnGuiPresenter>();
+            SetObjectReference(onGuiPresenter, "_eventChannel", assets.EventChannel);
+        }
+
+        /// <summary>
+        /// Creates a dedicated player scene root and instantiates the already-configured 3D Player prefab before play begins.
+        /// </summary>
+        private static void CreatePlayerRoot(Scene scene, GeneratedAssets assets, GeneratedPrefabs prefabs)
+        {
+            GameObject playerRoot = new GameObject("PlayerRoot");
+            GameObject playerObject = PrefabUtility.InstantiatePrefab(prefabs.PlayerPrefab.gameObject, scene) as GameObject;
+            if (playerObject == null)
+            {
+                throw new InvalidOperationException("Failed to instantiate generated Player prefab.");
+            }
+
+            playerObject.transform.SetParent(playerRoot.transform, true);
+            PlayerController playerController = playerObject.GetComponent<PlayerController>();
+            SetObjectReference(playerController, "_eventChannel", assets.EventChannel);
+            SetObjectReference(playerController, "_boardSettings", assets.BoardSettings);
+            SetObjectReference(playerController, "_presentationSettings", assets.PresentationSettings);
         }
 
         /// <summary>
@@ -861,7 +762,7 @@ namespace PocBattle.Editor
         }
 
         /// <summary>
-        /// Creates enemy presentation root that receives setup/status/intent only through the shared event channel.
+        /// Creates enemy presentation root that receives world-view setup and hit feedback only through the shared event channel.
         /// </summary>
         private static void CreateEnemyRoot(GeneratedAssets assets, GeneratedPrefabs prefabs)
         {
@@ -1014,9 +915,6 @@ namespace PocBattle.Editor
             /// <summary>2D sprite enemy prefab.</summary>
             public EnemyView EnemyPrefab { get; }
 
-            /// <summary>Overlay POC HUD prefab.</summary>
-            public BattleHudPresenter HudPrefab { get; }
-
             /// <summary>
             /// Creates a generated prefab bundle.
             /// </summary>
@@ -1024,14 +922,12 @@ namespace PocBattle.Editor
                 BoardCellView cellPrefab,
                 BlockView blockPrefab,
                 PlayerController playerPrefab,
-                EnemyView enemyPrefab,
-                BattleHudPresenter hudPrefab)
+                EnemyView enemyPrefab)
             {
                 CellPrefab = cellPrefab;
                 BlockPrefab = blockPrefab;
                 PlayerPrefab = playerPrefab;
                 EnemyPrefab = enemyPrefab;
-                HudPrefab = hudPrefab;
             }
         }
     }
