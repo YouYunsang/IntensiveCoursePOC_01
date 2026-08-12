@@ -28,3 +28,5 @@ MonoBehaviour:
     _weight: 1
   - _block: {fileID: 11400000, guid: 0457d2d29f44fa44e824c94af0f96f42, type: 2}
     _weight: 1
+  - _block: {fileID: 11400000, guid: d6fd27f3de2f22d498191e581ac98633, type: 2}
+    _weight: 2

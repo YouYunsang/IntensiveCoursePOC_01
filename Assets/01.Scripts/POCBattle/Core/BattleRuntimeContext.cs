@@ -8,6 +8,9 @@ namespace PocBattle.Core
     /// </summary>
     public sealed class BattleRuntimeContext
     {
+        /// <summary>Seed offset used to decorrelate cell-effect placement from block shuffle order.</summary>
+        private const int CELL_EFFECT_RANDOM_SEED_SALT = 486187739;
+
         /// <summary>Remaining player moves in the current player turn.</summary>
         private int _remainingMoveCount;
 
@@ -20,7 +23,10 @@ namespace PocBattle.Core
         /// <summary>Gets persistent block placement service for this stage battle.</summary>
         public BlockPlacementService PlacementService { get; }
 
-        /// <summary>Gets deterministic slide resolver.</summary>
+        /// <summary>Gets player-owned cell-effect placement service for this stage battle.</summary>
+        public CellEffectPlacementService CellEffectPlacementService { get; }
+
+        /// <summary>Gets deterministic segment slide resolver.</summary>
         public GridMovementResolver MovementResolver { get; }
 
         /// <summary>Gets persistent player combat model shared by the complete run.</summary>
@@ -44,9 +50,7 @@ namespace PocBattle.Core
         /// <summary>Gets remaining placement edits this turn.</summary>
         public int RemainingEditCount => _remainingEditCount;
 
-        /// <summary>
-        /// Creates stage-local models while reusing persistent run player/deck progression.
-        /// </summary>
+        /// <summary>Creates stage-local models while reusing persistent run player/deck progression.</summary>
         public BattleRuntimeContext(
             BattleBoardSettingsSO boardSettings,
             PlayerRunModel runModel,
@@ -59,6 +63,8 @@ namespace PocBattle.Core
             BlockEffects = new BlockEffectResolver(TurnEffects);
             EnemyParty = new EnemyPartyModel(encounter);
             PlacementService = new BlockPlacementService(Board, boardSettings, runModel.Deck, encounter, randomSeed);
+            int cellEffectSeed = unchecked(randomSeed * 397 ^ CELL_EFFECT_RANDOM_SEED_SALT);
+            CellEffectPlacementService = new CellEffectPlacementService(Board, runModel.Deck, cellEffectSeed);
             MovementResolver = new GridMovementResolver(Board);
             EnemyTurnResolver = new EnemyTurnResolver(Player, EnemyParty);
             ResetTurnResources();
@@ -71,7 +77,7 @@ namespace PocBattle.Core
             _remainingEditCount = Player.MaxEditCount;
         }
 
-        /// <summary>Consumes one successful movement if a move remains.</summary>
+        /// <summary>Consumes one successful manual movement if a move remains.</summary>
         public bool TryConsumeMove()
         {
             if (_remainingMoveCount <= 0)

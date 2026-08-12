@@ -22,3 +22,5 @@ MonoBehaviour:
     _weight: 4
   - _block: {fileID: 11400000, guid: 72735bb5ff40b524b906624ce13e55d3, type: 2}
     _weight: 3
+  - _block: {fileID: 11400000, guid: d6fd27f3de2f22d498191e581ac98633, type: 2}
+    _weight: 1

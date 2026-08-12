@@ -232,14 +232,32 @@ namespace PocBattle.Editor
             StageDefinitionSO stage = LoadOrCreateAsset<StageDefinitionSO>($"{DATA_ROOT}/Stage_{stageNumber:00}.asset");
             SetObjectArray(stage, "_encounterPool", new UnityEngine.Object[] { existing.EncounterA, existing.EncounterB });
 
+            List<WeightedBlockRewardEntry> preservedCellEffects = new List<WeightedBlockRewardEntry>();
+            for (int existingIndex = 0; existingIndex < stage.LootPool.Count; existingIndex++)
+            {
+                WeightedBlockRewardEntry existingEntry = stage.LootPool[existingIndex];
+                if (existingEntry != null && existingEntry.Item is CellEffectDefinitionSO)
+                {
+                    preservedCellEffects.Add(existingEntry);
+                }
+            }
+
             SerializedObject serializedStage = new SerializedObject(stage);
             SerializedProperty lootPool = serializedStage.FindProperty("_lootPool");
-            lootPool.arraySize = rewards.Length;
+            lootPool.arraySize = rewards.Length + preservedCellEffects.Count;
             for (int rewardIndex = 0; rewardIndex < rewards.Length; rewardIndex++)
             {
                 SerializedProperty entry = lootPool.GetArrayElementAtIndex(rewardIndex);
                 entry.FindPropertyRelative("_block").objectReferenceValue = rewards[rewardIndex].Block;
                 entry.FindPropertyRelative("_weight").intValue = Mathf.Max(1, rewards[rewardIndex].Weight);
+            }
+
+            for (int preserveIndex = 0; preserveIndex < preservedCellEffects.Count; preserveIndex++)
+            {
+                WeightedBlockRewardEntry preserved = preservedCellEffects[preserveIndex];
+                SerializedProperty entry = lootPool.GetArrayElementAtIndex(rewards.Length + preserveIndex);
+                entry.FindPropertyRelative("_block").objectReferenceValue = preserved.Item;
+                entry.FindPropertyRelative("_weight").intValue = Mathf.Max(1, preserved.Weight);
             }
             serializedStage.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(stage);
@@ -337,7 +355,7 @@ namespace PocBattle.Editor
             valid &= Validate(runAssets.HealBlock != null, "Heal block asset is missing.", logErrors);
             valid &= Validate(runAssets.RunDefinition != null, "Run_POC asset is missing.", logErrors);
             valid &= Validate(runAssets.Stages != null && runAssets.Stages.Length == 5, "POC run must contain five stage assets.", logErrors);
-            valid &= Validate(existing.PlayerStats.DeckCapacity >= existing.StartingDeck.GetTotalBlockCount(), "Deck capacity is smaller than the current starting deck.", logErrors);
+            valid &= Validate(existing.PlayerStats.DeckCapacity >= existing.StartingDeck.GetTotalItemCount(), "Deck capacity is smaller than the current starting deck.", logErrors);
             valid &= Validate(existing.PlayerStats.DeckCapacity <= existing.BoardSettings.MaxDeckBlockCount, "Player deck capacity exceeds board MaxDeckBlockCount.", logErrors);
 
             if (runAssets.RunDefinition != null)
@@ -379,7 +397,7 @@ namespace PocBattle.Editor
                 for (int lootIndex = 0; lootIndex < stage.LootPool.Count; lootIndex++)
                 {
                     WeightedBlockRewardEntry entry = stage.LootPool[lootIndex];
-                    valid &= Validate(entry != null && entry.Block != null && !entry.Block.IsTrap && entry.Weight > 0,
+                    valid &= Validate(entry != null && entry.Item != null && entry.Item.IsPlayerCollectible && entry.Weight > 0,
                         $"Stage {stageIndex + 1} contains an invalid/trap/non-positive loot entry at index {lootIndex}.", logErrors);
                 }
             }

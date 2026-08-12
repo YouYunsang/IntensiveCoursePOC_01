@@ -26,7 +26,7 @@ namespace PocBattle.Data
         [SerializeField, Tooltip("Player starting grid coordinate.")]
         private Vector2Int _playerStartPosition = new Vector2Int(3, 2);
 
-        [SerializeField, Tooltip("Maximum number of player deck blocks allowed for this board configuration.")]
+        [SerializeField, Tooltip("Maximum total number of player deck items allowed for this board configuration, including blocks and cell effects.")]
         private int _maxDeckBlockCount = 20;
 
         [SerializeField, Tooltip("When enabled, two editable deck blocks may swap positions during the edit phase.")]
@@ -56,7 +56,10 @@ namespace PocBattle.Data
         /// <summary>Gets the starting player coordinate.</summary>
         public Vector2Int PlayerStartPosition => _playerStartPosition;
 
-        /// <summary>Gets the configured maximum player deck size.</summary>
+        /// <summary>Gets the configured maximum total player deck item count for this board.</summary>
+        public int MaxDeckItemCount => _maxDeckBlockCount;
+
+        /// <summary>Compatibility alias retained for previous POC scripts.</summary>
         public int MaxDeckBlockCount => _maxDeckBlockCount;
 
         /// <summary>Gets whether block-to-block swapping is enabled.</summary>

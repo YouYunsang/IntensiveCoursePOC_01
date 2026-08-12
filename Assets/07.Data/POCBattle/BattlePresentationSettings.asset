@@ -27,6 +27,12 @@ MonoBehaviour:
   _blockHitSquashScale: {x: 1.18, y: 0.7, z: 1.18}
   _blockHitStretchScale: {x: 0.9, y: 1.25, z: 0.9}
   _blockHitBounceDuration: 0.32
+  _cellEffectSurfaceOffset: 0.03
+  _cellEffectFootprintRatio: 0.55
+  _cellEffectInactiveAlpha: 0.22
+  _cellEffectTriggerPulseScale: 1.22
+  _cellEffectTriggerPulseDuration: 0.18
+  _lootCellEffectScaleMultiplier: 1.25
   _normalCellColor: {r: 0.12, g: 0.12, b: 0.14, a: 1}
   _wallCellColor: {r: 0.28, g: 0.3, b: 0.34, a: 1}
   _playerCenterY: 0.75

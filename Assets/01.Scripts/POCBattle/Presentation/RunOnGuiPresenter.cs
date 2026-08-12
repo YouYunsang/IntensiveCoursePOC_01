@@ -26,7 +26,7 @@ namespace PocBattle.Presentation
         private RunStatusSnapshot _runStatus;
 
         /// <summary>Current offered loot definition.</summary>
-        private BlockDefinitionSO _lootDefinition;
+        private DeckItemDefinitionSO _lootDefinition;
 
         /// <summary>Current runtime deck discard rows.</summary>
         private DeckDiscardSelectionSnapshot _discardSnapshot;
@@ -44,7 +44,7 @@ namespace PocBattle.Presentation
         private string _discardCountLabel = "Selected: 0/3";
 
         /// <summary>Cached full-deck prompt rebuilt only when the loot definition changes.</summary>
-        private string _fullDeckDecisionLabel = "UNKNOWN REWARD\n\nDiscard 1 to 3 existing blocks and take the new block?";
+        private string _fullDeckDecisionLabel = "UNKNOWN REWARD\n\nDiscard 1 to 3 existing items and take the new item?";
 
         /// <summary>Scroll position retained between IMGUI calls for the deck list.</summary>
         private Vector2 _deckScrollPosition;
@@ -188,7 +188,7 @@ namespace PocBattle.Presentation
             Rect rect = RunOnGuiLayoutUtility.GetLootDecisionRect();
             Rect hintRect = new Rect(rect.x, rect.y + rect.height + 16f, rect.width, 44f);
             GUI.Box(hintRect, GUIContent.none, _panelStyle);
-            GUI.Label(hintRect, "Click the floating glowing block to inspect the reward.", _centerStyle);
+            GUI.Label(hintRect, "Click the floating glowing reward to inspect the reward.", _centerStyle);
         }
 
         /// <summary>Draws normal take/leave choice when the runtime deck has room or capacity has not been checked yet.</summary>
@@ -196,9 +196,9 @@ namespace PocBattle.Presentation
         {
             Rect rect = RunOnGuiLayoutUtility.GetLootDecisionRect();
             GUI.Box(rect, GUIContent.none, _panelStyle);
-            GUI.Label(new Rect(rect.x + 20f, rect.y + 18f, rect.width - 40f, 40f), "NEW BLOCK", _headerStyle);
+            GUI.Label(new Rect(rect.x + 20f, rect.y + 18f, rect.width - 40f, 40f), "NEW ITEM", _headerStyle);
             GUI.Label(new Rect(rect.x + 30f, rect.y + 76f, rect.width - 60f, 80f), FormatLootLabel(), _headerStyle);
-            GUI.Label(new Rect(rect.x + 30f, rect.y + 145f, rect.width - 60f, 45f), "Add this block to your deck?", _centerStyle);
+            GUI.Label(new Rect(rect.x + 30f, rect.y + 145f, rect.width - 60f, 45f), "Add this item to your deck?", _centerStyle);
 
             float buttonWidth = (rect.width - 90f) * 0.5f;
             if (GUI.Button(new Rect(rect.x + 30f, rect.y + 215f, buttonWidth, 48f), "TAKE", _buttonStyle))
@@ -234,12 +234,12 @@ namespace PocBattle.Presentation
             }
         }
 
-        /// <summary>Draws every physical runtime deck block and allows at most three exact copies to be selected.</summary>
+        /// <summary>Draws every physical runtime deck item and allows at most three exact copies to be selected.</summary>
         private void DrawDiscardSelection()
         {
             Rect rect = RunOnGuiLayoutUtility.GetDeckDiscardRect();
             GUI.Box(rect, GUIContent.none, _panelStyle);
-            GUI.Label(new Rect(rect.x + 20f, rect.y + 14f, rect.width - 40f, 40f), "SELECT 1-3 BLOCKS TO DISCARD", _headerStyle);
+            GUI.Label(new Rect(rect.x + 20f, rect.y + 14f, rect.width - 40f, 40f), "SELECT 1-3 ITEMS TO DISCARD", _headerStyle);
 
             if (_discardSnapshot == null)
             {
@@ -254,7 +254,7 @@ namespace PocBattle.Presentation
 
             for (int itemIndex = 0; itemIndex < _discardSnapshot.Items.Length; itemIndex++)
             {
-                DeckBlockSelectionSnapshot item = _discardSnapshot.Items[itemIndex];
+                DeckItemSelectionSnapshot item = _discardSnapshot.Items[itemIndex];
                 string buttonText = _discardLabels != null && itemIndex < _discardLabels.Length
                     ? _discardLabels[itemIndex]
                     : item.Definition != null ? item.Definition.DisplayName : "Unknown";
@@ -371,9 +371,9 @@ namespace PocBattle.Presentation
         {
             _lootDefinition = snapshot.IsVisible ? snapshot.Definition : null;
             _lootLabel = _lootDefinition != null
-                ? BlockEffectTextFormatter.Format(_lootDefinition, _presentationSettings.CriticalMultiplier)
+                ? DeckItemTextFormatter.Format(_lootDefinition, _presentationSettings.CriticalMultiplier)
                 : "UNKNOWN REWARD";
-            _fullDeckDecisionLabel = _lootLabel + "\n\nDiscard 1 to 3 existing blocks and take the new block?";
+            _fullDeckDecisionLabel = _lootLabel + "\n\nDiscard 1 to 3 existing items and take the new item?";
         }
 
         /// <summary>Caches runtime deck discard rows.</summary>
@@ -389,10 +389,10 @@ namespace PocBattle.Presentation
             _discardLabels = new string[snapshot.Items.Length];
             for (int itemIndex = 0; itemIndex < snapshot.Items.Length; itemIndex++)
             {
-                DeckBlockSelectionSnapshot item = snapshot.Items[itemIndex];
-                BlockDefinitionSO definition = item.Definition;
+                DeckItemSelectionSnapshot item = snapshot.Items[itemIndex];
+                DeckItemDefinitionSO definition = item.Definition;
                 string label = definition != null
-                    ? BlockEffectTextFormatter.Format(definition, _presentationSettings.CriticalMultiplier).Replace("\n", " / ")
+                    ? DeckItemTextFormatter.Format(definition, _presentationSettings.CriticalMultiplier).Replace("\n", " / ")
                     : "Unknown";
                 _discardLabels[itemIndex] = item.IsSelected ? "[SELECTED]  " + label : label;
             }

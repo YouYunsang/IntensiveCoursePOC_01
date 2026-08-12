@@ -56,6 +56,25 @@ namespace PocBattle.Data
         [SerializeField, Tooltip("Total duration of the block squash/stretch/settle collision sequence.")]
         private float _blockHitBounceDuration = 0.32f;
 
+        [Header("Cell Effects")]
+        [SerializeField, Tooltip("World-space offset above the top surface of a normal cell used by cell-effect sprites.")]
+        private float _cellEffectSurfaceOffset = 0.03f;
+
+        [SerializeField, Tooltip("Cell-effect sprite size as a ratio of board cell size.")]
+        private float _cellEffectFootprintRatio = 0.55f;
+
+        [SerializeField, Tooltip("Sprite alpha used after a cell effect has triggered once during the current manual move.")]
+        private float _cellEffectInactiveAlpha = 0.22f;
+
+        [SerializeField, Tooltip("Scale multiplier used by the short trigger pulse before a cell effect visually deactivates.")]
+        private float _cellEffectTriggerPulseScale = 1.22f;
+
+        [SerializeField, Tooltip("Duration of the cell-effect trigger pulse.")]
+        private float _cellEffectTriggerPulseDuration = 0.18f;
+
+        [SerializeField, Tooltip("Scale multiplier used when a cell-effect deck item is shown as floating world loot.")]
+        private float _lootCellEffectScaleMultiplier = 1.25f;
+
         [Header("Board Colors")]
         [SerializeField, Tooltip("Normal floor color.")]
         private Color _normalCellColor = new Color(0.12f, 0.12f, 0.14f, 1f);
@@ -196,6 +215,24 @@ namespace PocBattle.Data
         /// <summary>Gets total slime-like block hit bounce duration.</summary>
         public float BlockHitBounceDuration => _blockHitBounceDuration;
 
+        /// <summary>Gets cell-effect sprite surface offset above the normal cell top.</summary>
+        public float CellEffectSurfaceOffset => _cellEffectSurfaceOffset;
+
+        /// <summary>Gets cell-effect sprite footprint ratio.</summary>
+        public float CellEffectFootprintRatio => _cellEffectFootprintRatio;
+
+        /// <summary>Gets alpha used by a cell effect disabled for the current manual move.</summary>
+        public float CellEffectInactiveAlpha => _cellEffectInactiveAlpha;
+
+        /// <summary>Gets trigger pulse scale multiplier.</summary>
+        public float CellEffectTriggerPulseScale => _cellEffectTriggerPulseScale;
+
+        /// <summary>Gets trigger pulse duration.</summary>
+        public float CellEffectTriggerPulseDuration => _cellEffectTriggerPulseDuration;
+
+        /// <summary>Gets floating loot scale multiplier for cell-effect items.</summary>
+        public float LootCellEffectScaleMultiplier => _lootCellEffectScaleMultiplier;
+
         /// <summary>Gets normal floor color.</summary>
         public Color NormalCellColor => _normalCellColor;
 
@@ -301,6 +338,12 @@ namespace PocBattle.Data
             _blockHitSquashScale = ClampPositiveScale(_blockHitSquashScale);
             _blockHitStretchScale = ClampPositiveScale(_blockHitStretchScale);
             _blockHitBounceDuration = Mathf.Max(0.03f, _blockHitBounceDuration);
+            _cellEffectSurfaceOffset = Mathf.Max(0f, _cellEffectSurfaceOffset);
+            _cellEffectFootprintRatio = Mathf.Clamp(_cellEffectFootprintRatio, 0.05f, 1f);
+            _cellEffectInactiveAlpha = Mathf.Clamp01(_cellEffectInactiveAlpha);
+            _cellEffectTriggerPulseScale = Mathf.Max(1f, _cellEffectTriggerPulseScale);
+            _cellEffectTriggerPulseDuration = Mathf.Max(0.01f, _cellEffectTriggerPulseDuration);
+            _lootCellEffectScaleMultiplier = Mathf.Max(0.1f, _lootCellEffectScaleMultiplier);
             _moveSecondsPerCell = Mathf.Max(0.01f, _moveSecondsPerCell);
             _invalidMoveDistance = Mathf.Max(0.01f, _invalidMoveDistance);
             _invalidMoveDuration = Mathf.Max(0.01f, _invalidMoveDuration);

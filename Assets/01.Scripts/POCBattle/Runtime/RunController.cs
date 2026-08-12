@@ -85,7 +85,7 @@ namespace PocBattle.Runtime
         private System.Random _boardSeedRandom;
 
         /// <summary>Current offered loot block during Looting.</summary>
-        private BlockDefinitionSO _pendingLootDefinition;
+        private DeckItemDefinitionSO _pendingLootDefinition;
 
         /// <summary>Latest defeated enemy index used as the loot drop anchor.</summary>
         private int _lastDefeatedEnemyIndex;
@@ -332,7 +332,7 @@ namespace PocBattle.Runtime
 
             if (_runModel.Deck.HasFreeSlot)
             {
-                if (!_runModel.Deck.TryAddBlock(_pendingLootDefinition))
+                if (!_runModel.Deck.TryAddItem(_pendingLootDefinition))
                 {
                     throw new InvalidOperationException("Loot reward could not be added even though PlayerDeckModel reported a free slot.");
                 }
@@ -410,10 +410,10 @@ namespace PocBattle.Runtime
 
             for (int selectedIndex = 0; selectedIndex < _selectedDiscardIds.Count; selectedIndex++)
             {
-                _runModel.Deck.RemoveBlock(_selectedDiscardIds[selectedIndex]);
+                _runModel.Deck.RemoveItem(_selectedDiscardIds[selectedIndex]);
             }
 
-            if (!_runModel.Deck.TryAddBlock(_pendingLootDefinition))
+            if (!_runModel.Deck.TryAddItem(_pendingLootDefinition))
             {
                 throw new InvalidOperationException("Loot replacement failed after valid deck discards created free capacity.");
             }
@@ -585,15 +585,15 @@ namespace PocBattle.Runtime
         /// </summary>
         private void PublishDiscardSelection()
         {
-            IReadOnlyList<DeckBlockInstance> blocks = _runModel.Deck.Blocks;
-            DeckBlockSelectionSnapshot[] items = new DeckBlockSelectionSnapshot[blocks.Count];
-            for (int blockIndex = 0; blockIndex < blocks.Count; blockIndex++)
+            IReadOnlyList<DeckItemInstance> deckItems = _runModel.Deck.Items;
+            DeckItemSelectionSnapshot[] items = new DeckItemSelectionSnapshot[deckItems.Count];
+            for (int itemIndex = 0; itemIndex < deckItems.Count; itemIndex++)
             {
-                DeckBlockInstance block = blocks[blockIndex];
-                items[blockIndex] = new DeckBlockSelectionSnapshot(
-                    block.InstanceId,
-                    block.Definition,
-                    _selectedDiscardIds.Contains(block.InstanceId));
+                DeckItemInstance item = deckItems[itemIndex];
+                items[itemIndex] = new DeckItemSelectionSnapshot(
+                    item.InstanceId,
+                    item.Definition,
+                    _selectedDiscardIds.Contains(item.InstanceId));
             }
 
             _eventChannel.RaiseDeckDiscardSelectionChanged(
@@ -664,14 +664,14 @@ namespace PocBattle.Runtime
             throw new InvalidOperationException($"Encounter selection failed for stage '{stage.name}'.");
         }
 
-        /// <summary>Selects one non-trap block using positive weighted stage loot entries.</summary>
-        private BlockDefinitionSO SelectLoot(StageDefinitionSO stage)
+        /// <summary>Selects one player-collectible deck item using positive weighted stage loot entries.</summary>
+        private DeckItemDefinitionSO SelectLoot(StageDefinitionSO stage)
         {
             int totalWeight = 0;
             for (int entryIndex = 0; entryIndex < stage.LootPool.Count; entryIndex++)
             {
                 WeightedBlockRewardEntry entry = stage.LootPool[entryIndex];
-                if (entry != null && entry.Block != null && !entry.Block.IsTrap)
+                if (entry != null && entry.Item != null && entry.Item.IsPlayerCollectible)
                 {
                     totalWeight += entry.Weight;
                 }
@@ -687,7 +687,7 @@ namespace PocBattle.Runtime
             for (int entryIndex = 0; entryIndex < stage.LootPool.Count; entryIndex++)
             {
                 WeightedBlockRewardEntry entry = stage.LootPool[entryIndex];
-                if (entry == null || entry.Block == null || entry.Block.IsTrap || entry.Weight <= 0)
+                if (entry == null || entry.Item == null || !entry.Item.IsPlayerCollectible || entry.Weight <= 0)
                 {
                     continue;
                 }
@@ -695,7 +695,7 @@ namespace PocBattle.Runtime
                 accumulatedWeight += entry.Weight;
                 if (roll < accumulatedWeight)
                 {
-                    return entry.Block;
+                    return entry.Item;
                 }
             }
 
@@ -717,24 +717,32 @@ namespace PocBattle.Runtime
         }
 
         /// <summary>
-        /// Validates current deck size against board guaranteed-placement capacity before a stage battle is created.
+        /// Validates total deck occupancy and blocking-only occupancy independently. Cell effects occupy cells but do not block sliding.
         /// </summary>
         private void ValidateStageCapacity(EncounterDefinitionSO encounter)
         {
-            int guaranteedCapacity = _boardSettings.Columns * _boardSettings.Rows - 4 - 1 - 1;
+            int totalNormalCapacity = _boardSettings.Columns * _boardSettings.Rows - 4 - 1;
+            int guaranteedBlockingCapacity = totalNormalCapacity - 1;
             int trapCount = encounter.TrapDefinition != null ? encounter.TrapCount : 0;
-            int totalPlacementCount = _runModel.Deck.Count + trapCount;
+            int totalOccupiedCount = _runModel.Deck.Count + trapCount;
+            int totalBlockingCount = _runModel.Deck.BlockCount + trapCount;
 
-            if (_runModel.Deck.Count > _boardSettings.MaxDeckBlockCount)
+            if (_runModel.Deck.Count > _boardSettings.MaxDeckItemCount)
             {
                 throw new InvalidOperationException(
-                    $"Runtime deck count {_runModel.Deck.Count} exceeds board MaxDeckBlockCount {_boardSettings.MaxDeckBlockCount}.");
+                    $"Runtime deck count {_runModel.Deck.Count} exceeds board MaxDeckItemCount {_boardSettings.MaxDeckItemCount}.");
             }
 
-            if (totalPlacementCount > guaranteedCapacity)
+            if (totalOccupiedCount > totalNormalCapacity)
             {
                 throw new InvalidOperationException(
-                    $"Stage needs {totalPlacementCount} deck/trap cells, but guaranteed board capacity is {guaranteedCapacity}.");
+                    $"Stage needs {totalOccupiedCount} deck/trap occupied cells, but board capacity excluding walls/player is {totalNormalCapacity}.");
+            }
+
+            if (totalBlockingCount > guaranteedBlockingCapacity)
+            {
+                throw new InvalidOperationException(
+                    $"Stage needs {totalBlockingCount} blocking block/trap cells, but guaranteed-movement capacity is {guaranteedBlockingCapacity}.");
             }
         }
 
@@ -757,10 +765,10 @@ namespace PocBattle.Runtime
                 throw new InvalidOperationException("RunDefinitionSO must contain at least one stage.");
             }
 
-            if (_playerBaseStats.DeckCapacity > _boardSettings.MaxDeckBlockCount)
+            if (_playerBaseStats.DeckCapacity > _boardSettings.MaxDeckItemCount)
             {
                 throw new InvalidOperationException(
-                    $"Player deck capacity {_playerBaseStats.DeckCapacity} exceeds board MaxDeckBlockCount {_boardSettings.MaxDeckBlockCount}.");
+                    $"Player deck capacity {_playerBaseStats.DeckCapacity} exceeds board MaxDeckItemCount {_boardSettings.MaxDeckItemCount}.");
             }
         }
 

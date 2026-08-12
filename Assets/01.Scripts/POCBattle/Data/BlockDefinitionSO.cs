@@ -8,7 +8,7 @@ namespace PocBattle.Data
     /// Defines one deck or trap block and the effects it executes on collision.
     /// </summary>
     [CreateAssetMenu(menuName = "POC Battle/Blocks/Block Definition", fileName = "BlockDefinition")]
-    public sealed class BlockDefinitionSO : ScriptableObject
+    public sealed class BlockDefinitionSO : DeckItemDefinitionSO
     {
         [SerializeField, Tooltip("Human-readable name shown by debug and POC presentation.")]
         private string _displayName = "Block";
@@ -23,13 +23,16 @@ namespace PocBattle.Data
         private BlockEffectDefinitionSO[] _effects = Array.Empty<BlockEffectDefinitionSO>();
 
         /// <summary>Gets the block display name.</summary>
-        public string DisplayName => _displayName;
+        public override string DisplayName => _displayName;
 
         /// <summary>Gets the POC block display color.</summary>
-        public Color DisplayColor => _displayColor;
+        public override Color DisplayColor => _displayColor;
 
         /// <summary>Gets whether this definition represents an uneditable trap.</summary>
         public bool IsTrap => _isTrap;
+
+        /// <summary>Only non-trap blocks may live in the player's runtime deck.</summary>
+        public override bool IsPlayerCollectible => !_isTrap;
 
         /// <summary>Gets this block's composable effects.</summary>
         public IReadOnlyList<BlockEffectDefinitionSO> Effects => _effects;

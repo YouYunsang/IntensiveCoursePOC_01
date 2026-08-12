@@ -22,6 +22,9 @@ namespace PocBattle.Runtime
         /// <summary>Reusable block snapshot list to avoid per-edit garbage.</summary>
         private readonly List<BlockSnapshot> _blockSnapshots;
 
+        /// <summary>Reusable cell-effect snapshot list to avoid per-turn list allocations.</summary>
+        private readonly List<CellEffectSnapshot> _cellEffectSnapshots;
+
         /// <summary>Reusable enemy setup list created once per battle initialization.</summary>
         private readonly List<EnemySetupSnapshot> _enemySetupSnapshots;
 
@@ -40,6 +43,7 @@ namespace PocBattle.Runtime
             _presentationSettings = presentationSettings;
             _eventChannel = eventChannel;
             _blockSnapshots = new List<BlockSnapshot>(context.PlacementService.Blocks.Count);
+            _cellEffectSnapshots = new List<CellEffectSnapshot>(context.CellEffectPlacementService.Effects.Count);
             _enemySetupSnapshots = new List<EnemySetupSnapshot>(context.EnemyParty.Enemies.Count);
             _intentBuilder = new StringBuilder();
         }
@@ -93,6 +97,27 @@ namespace PocBattle.Runtime
             }
 
             _eventChannel.RaiseBlockLayoutChanged(_blockSnapshots, animate);
+        }
+
+        /// <summary>
+        /// Publishes every current player-turn cell-effect coordinate and assigned direction.
+        /// </summary>
+        public void PublishCellEffectLayout()
+        {
+            _cellEffectSnapshots.Clear();
+            IReadOnlyList<CellEffectRuntime> effects = _context.CellEffectPlacementService.Effects;
+            for (int effectIndex = 0; effectIndex < effects.Count; effectIndex++)
+            {
+                CellEffectRuntime effect = effects[effectIndex];
+                _cellEffectSnapshots.Add(
+                    new CellEffectSnapshot(
+                        effect.Id,
+                        effect.Definition,
+                        effect.Coordinate,
+                        effect.AssignedDirection));
+            }
+
+            _eventChannel.RaiseCellEffectLayoutChanged(_cellEffectSnapshots);
         }
 
         /// <summary>

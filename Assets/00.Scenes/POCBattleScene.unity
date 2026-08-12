@@ -161,6 +161,7 @@ GameObject:
   m_Component:
   - component: {fileID: 779965955}
   - component: {fileID: 779965954}
+  - component: {fileID: 779965956}
   m_Layer: 0
   m_Name: BoardRoot
   m_TagString: Untagged
@@ -200,6 +201,22 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &779965956
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 779965953}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0ac8c6c835451da45a433602beaf9651, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PocBattle.Presentation.CellEffectLayerView
+  _boardSettings: {fileID: 11400000, guid: 78ed7969bf46e924aa6f0e13c4c58e39, type: 2}
+  _presentationSettings: {fileID: 11400000, guid: 82d72e2841bf9b64e8efe536b6ccb097, type: 2}
+  _eventChannel: {fileID: 11400000, guid: 51e0d733e8587fb4f8e49c1607279059, type: 2}
+  _cellEffectPrefab: {fileID: 5685027694145888520, guid: 43c98014ea09dd347aa76c20269d8a11, type: 3}
 --- !u!1 &1002403572
 GameObject:
   m_ObjectHideFlags: 0
@@ -460,6 +477,7 @@ MonoBehaviour:
   _boardSettings: {fileID: 11400000, guid: 78ed7969bf46e924aa6f0e13c4c58e39, type: 2}
   _presentationSettings: {fileID: 11400000, guid: 82d72e2841bf9b64e8efe536b6ccb097, type: 2}
   _blockPrefab: {fileID: 3906092088353711552, guid: 565b729bb6115be47a753ae10ffa05bd, type: 3}
+  _cellEffectPrefab: {fileID: 5685027694145888520, guid: 43c98014ea09dd347aa76c20269d8a11, type: 3}
 --- !u!4 &1398890169
 Transform:
   m_ObjectHideFlags: 0

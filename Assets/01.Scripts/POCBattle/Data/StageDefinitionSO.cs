@@ -5,19 +5,23 @@ using UnityEngine;
 namespace PocBattle.Data
 {
     /// <summary>
-    /// Defines one weighted block reward candidate for a stage loot pool.
+    /// Defines one weighted deck-item reward candidate for a stage loot pool.
+    /// The serialized field name remains _block so existing stage assets retain their block reward references.
     /// </summary>
     [Serializable]
     public sealed class WeightedBlockRewardEntry
     {
-        [SerializeField, Tooltip("Player-collectible block that can drop after clearing this stage.")]
-        private BlockDefinitionSO _block;
+        [SerializeField, Tooltip("Player-collectible deck item that can drop after clearing this stage.")]
+        private DeckItemDefinitionSO _block;
 
         [SerializeField, Tooltip("Relative random selection weight. Higher values are selected more often.")]
         private int _weight = 1;
 
-        /// <summary>Gets reward block definition.</summary>
-        public BlockDefinitionSO Block => _block;
+        /// <summary>Gets generalized reward item definition.</summary>
+        public DeckItemDefinitionSO Item => _block;
+
+        /// <summary>Compatibility accessor for older block-only editor tooling.</summary>
+        public BlockDefinitionSO Block => _block as BlockDefinitionSO;
 
         /// <summary>Gets positive random selection weight.</summary>
         public int Weight => Mathf.Max(0, _weight);
@@ -32,7 +36,7 @@ namespace PocBattle.Data
         [SerializeField, Tooltip("Encounter candidates. One encounter is selected randomly when this stage begins.")]
         private EncounterDefinitionSO[] _encounterPool = Array.Empty<EncounterDefinitionSO>();
 
-        [SerializeField, Tooltip("Weighted player-block candidates used for the post-battle loot drop.")]
+        [SerializeField, Tooltip("Weighted player deck-item candidates used for the post-battle loot drop.")]
         private WeightedBlockRewardEntry[] _lootPool = Array.Empty<WeightedBlockRewardEntry>();
 
         /// <summary>Gets random encounter candidates.</summary>

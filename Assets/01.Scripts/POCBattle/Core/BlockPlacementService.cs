@@ -97,11 +97,14 @@ namespace PocBattle.Core
                 throw new ArgumentNullException(nameof(encounter));
             }
 
-            IReadOnlyList<DeckBlockInstance> deckBlocks = deck.Blocks;
-            for (int blockIndex = 0; blockIndex < deckBlocks.Count; blockIndex++)
+            IReadOnlyList<DeckItemInstance> deckItems = deck.Items;
+            for (int itemIndex = 0; itemIndex < deckItems.Count; itemIndex++)
             {
-                DeckBlockInstance deckBlock = deckBlocks[blockIndex];
-                _blocks.Add(new BlockRuntime(deckBlock.InstanceId, deckBlock.Definition));
+                DeckItemInstance deckItem = deckItems[itemIndex];
+                if (deckItem.Definition is BlockDefinitionSO blockDefinition)
+                {
+                    _blocks.Add(new BlockRuntime(deckItem.InstanceId, blockDefinition));
+                }
             }
 
             if (encounter.TrapDefinition != null)
@@ -118,13 +121,13 @@ namespace PocBattle.Core
         /// </summary>
         private void ValidateCapacity(PlayerDeckModel deck, EncounterDefinitionSO encounter)
         {
-            IReadOnlyList<DeckBlockInstance> deckBlocks = deck.Blocks;
-            for (int blockIndex = 0; blockIndex < deckBlocks.Count; blockIndex++)
+            IReadOnlyList<DeckItemInstance> deckItems = deck.Items;
+            for (int itemIndex = 0; itemIndex < deckItems.Count; itemIndex++)
             {
-                BlockDefinitionSO definition = deckBlocks[blockIndex].Definition;
-                if (definition != null && definition.IsTrap)
+                DeckItemDefinitionSO definition = deckItems[itemIndex].Definition;
+                if (definition != null && !definition.IsPlayerCollectible)
                 {
-                    throw new InvalidOperationException($"Player runtime deck cannot contain trap block '{definition.DisplayName}'.");
+                    throw new InvalidOperationException($"Player runtime deck cannot contain non-collectible item '{definition.DisplayName}'.");
                 }
             }
 
@@ -133,21 +136,30 @@ namespace PocBattle.Core
                 throw new InvalidOperationException("Encounter TrapDefinition must reference a BlockDefinitionSO with IsTrap enabled.");
             }
 
-            int deckCount = deck.Count;
-            if (deckCount > _boardSettings.MaxDeckBlockCount)
+            int deckItemCount = deck.Count;
+            if (deckItemCount > _boardSettings.MaxDeckItemCount)
             {
                 throw new InvalidOperationException(
-                    $"Runtime deck contains {deckCount} blocks, exceeding board MaxDeckBlockCount {_boardSettings.MaxDeckBlockCount}.");
+                    $"Runtime deck contains {deckItemCount} items, exceeding board MaxDeckItemCount {_boardSettings.MaxDeckItemCount}.");
             }
 
             int usableCells = _boardSettings.Columns * _boardSettings.Rows;
-            int guaranteedCapacity = usableCells - CORNER_WALL_COUNT - PLAYER_CELL_COUNT - RESERVED_ESCAPE_CELL_COUNT;
-            int totalPlacementCount = deckCount + (encounter.TrapDefinition != null ? encounter.TrapCount : 0);
+            int totalNormalCapacity = usableCells - CORNER_WALL_COUNT - PLAYER_CELL_COUNT;
+            int guaranteedBlockingCapacity = totalNormalCapacity - RESERVED_ESCAPE_CELL_COUNT;
+            int trapCount = encounter.TrapDefinition != null ? encounter.TrapCount : 0;
+            int totalOccupiedCount = deck.Count + trapCount;
+            int totalBlockingCount = deck.BlockCount + trapCount;
 
-            if (totalPlacementCount > guaranteedCapacity)
+            if (totalOccupiedCount > totalNormalCapacity)
             {
                 throw new InvalidOperationException(
-                    $"Encounter needs {totalPlacementCount} block cells, but guaranteed-movement capacity is {guaranteedCapacity}.");
+                    $"Encounter needs {totalOccupiedCount} deck/trap occupied cells, but board capacity excluding walls/player is {totalNormalCapacity}.");
+            }
+
+            if (totalBlockingCount > guaranteedBlockingCapacity)
+            {
+                throw new InvalidOperationException(
+                    $"Encounter needs {totalBlockingCount} blocking deck/trap cells, but guaranteed-movement capacity is {guaranteedBlockingCapacity}.");
             }
         }
 

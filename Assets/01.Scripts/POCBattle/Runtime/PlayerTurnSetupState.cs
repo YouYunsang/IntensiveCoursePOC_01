@@ -29,11 +29,14 @@ namespace PocBattle.Runtime
             Context.Player.ResetShieldForOwnTurn();
             Context.TurnEffects.Reset();
             Context.ResetTurnResources();
+            Context.CellEffectPlacementService.ClearForNewTurn();
             Context.PlacementService.PlaceAllBlocksForNewTurn();
+            Context.CellEffectPlacementService.PlaceAllForNewTurn();
             Publisher.PublishPlayerStatus();
             Publisher.PublishTurnResources();
             Publisher.PublishTurnEffects();
             Publisher.PublishBlockLayout(true);
+            Publisher.PublishCellEffectLayout();
             Publisher.PublishPlayerPositionSync();
             // Keep edit input disabled until the longest board placement tween reaches authoritative cell centers.
             float layoutSettleDuration = Mathf.Max(PresentationSettings.BlockMoveDuration, PresentationSettings.BlockDropDuration);

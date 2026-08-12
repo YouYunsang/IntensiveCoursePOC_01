@@ -27,7 +27,7 @@ namespace PocBattle.Core
     }
 
     /// <summary>
-    /// Reason a slide movement stopped or failed.
+    /// Reason one movement segment stopped or failed.
     /// </summary>
     public enum MoveStopReason
     {
@@ -35,60 +35,54 @@ namespace PocBattle.Core
         Block = 1,
         Wall = 2,
         Boundary = 3,
-        Invalid = 4
+        Invalid = 4,
+        CellEffect = 5
     }
 
     /// <summary>
-    /// Result of one resolved movement input.
+    /// Result of one resolved segment inside a single player movement input.
+    /// A direction-change cell may cause several valid segments while only the first manual segment consumes a move count.
     /// </summary>
     public readonly struct MoveResult
     {
-        /// <summary>Whether at least one cell of movement is possible.</summary>
         private readonly bool _isValid;
-
-        /// <summary>Grid position before movement.</summary>
         private readonly Vector2Int _startPosition;
-
-        /// <summary>Final player grid position.</summary>
         private readonly Vector2Int _destination;
-
-        /// <summary>Input cardinal direction.</summary>
         private readonly Vector2Int _direction;
-
-        /// <summary>Logical reason movement stopped.</summary>
         private readonly MoveStopReason _stopReason;
-
-        /// <summary>Block collided with at the destination edge, if any.</summary>
         private readonly BlockRuntime _hitBlock;
+        private readonly CellEffectRuntime _hitCellEffect;
 
-        /// <summary>Gets whether the move is valid.</summary>
+        /// <summary>Gets whether at least one cell of movement is possible.</summary>
         public bool IsValid => _isValid;
 
-        /// <summary>Gets start position.</summary>
+        /// <summary>Gets grid position before this segment.</summary>
         public Vector2Int StartPosition => _startPosition;
 
-        /// <summary>Gets destination position.</summary>
+        /// <summary>Gets final grid position for this segment.</summary>
         public Vector2Int Destination => _destination;
 
-        /// <summary>Gets input direction.</summary>
+        /// <summary>Gets the cardinal direction used by this segment.</summary>
         public Vector2Int Direction => _direction;
 
-        /// <summary>Gets stop reason.</summary>
+        /// <summary>Gets logical reason this segment stopped.</summary>
         public MoveStopReason StopReason => _stopReason;
 
-        /// <summary>Gets collided block, if one was hit.</summary>
+        /// <summary>Gets collided block when the segment stopped immediately before a block.</summary>
         public BlockRuntime HitBlock => _hitBlock;
 
-        /// <summary>
-        /// Creates an immutable movement result.
-        /// </summary>
+        /// <summary>Gets the active cell effect entered at this segment destination.</summary>
+        public CellEffectRuntime HitCellEffect => _hitCellEffect;
+
+        /// <summary>Creates an immutable movement segment result.</summary>
         public MoveResult(
             bool isValid,
             Vector2Int startPosition,
             Vector2Int destination,
             Vector2Int direction,
             MoveStopReason stopReason,
-            BlockRuntime hitBlock)
+            BlockRuntime hitBlock,
+            CellEffectRuntime hitCellEffect = null)
         {
             _isValid = isValid;
             _startPosition = startPosition;
@@ -96,6 +90,7 @@ namespace PocBattle.Core
             _direction = direction;
             _stopReason = stopReason;
             _hitBlock = hitBlock;
+            _hitCellEffect = hitCellEffect;
         }
     }
 
