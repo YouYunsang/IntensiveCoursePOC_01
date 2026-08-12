@@ -6,21 +6,24 @@ using UnityEngine;
 namespace PocBattle.Core
 {
     /// <summary>
-    /// Owns physical runtime block copies and places every deck/trap block each player turn.
+    /// Owns stage-local runtime block copies and places every current runtime-deck/trap block each player turn.
     /// </summary>
     public sealed class BlockPlacementService
     {
-        /// <summary>Exactly four corner cells are permanent walls.</summary>
+        /// <summary>Four logical board corners are permanently reserved as wall cells.</summary>
         private const int CORNER_WALL_COUNT = 4;
 
-        /// <summary>Exactly one cell is occupied by the player.</summary>
+        /// <summary>One logical cell is occupied by the player during placement.</summary>
         private const int PLAYER_CELL_COUNT = 1;
 
-        /// <summary>Exactly one adjacent cell is reserved to guarantee an initial movement direction.</summary>
+        /// <summary>One adjacent cell is reserved to guarantee at least one initial move direction.</summary>
         private const int RESERVED_ESCAPE_CELL_COUNT = 1;
 
-        /// <summary>Maximum number of cardinal adjacent coordinates.</summary>
+        /// <summary>Number of Manhattan-distance-one cardinal directions.</summary>
         private const int CARDINAL_DIRECTION_COUNT = 4;
+
+        /// <summary>High id range reserved for stage-local trap copies so it cannot collide with runtime deck ids.</summary>
+        private const int TRAP_BLOCK_ID_START = 1000000;
 
         /// <summary>Board whose occupancy is mutated by placement operations.</summary>
         private readonly BoardModel _board;
@@ -28,7 +31,7 @@ namespace PocBattle.Core
         /// <summary>Board rules used for capacity validation.</summary>
         private readonly BattleBoardSettingsSO _boardSettings;
 
-        /// <summary>All persistent runtime block copies for this battle.</summary>
+        /// <summary>All persistent runtime block copies for this stage battle.</summary>
         private readonly List<BlockRuntime> _blocks;
 
         /// <summary>Reusable list of currently eligible placement coordinates.</summary>
@@ -37,19 +40,19 @@ namespace PocBattle.Core
         /// <summary>Reusable list of valid adjacent cells used to reserve one escape direction.</summary>
         private readonly List<Vector2Int> _adjacentCandidates;
 
-        /// <summary>Deterministic or time-seeded random source used only by placement.</summary>
+        /// <summary>Random source used only by board placement.</summary>
         private readonly System.Random _random;
 
-        /// <summary>Gets all persistent runtime block copies.</summary>
+        /// <summary>Gets all runtime block copies.</summary>
         public IReadOnlyList<BlockRuntime> Blocks => _blocks;
 
         /// <summary>
-        /// Creates physical deck/trap runtime copies and validates board capacity up front.
+        /// Creates one runtime board block per currently owned deck instance plus encounter trap copies.
         /// </summary>
         public BlockPlacementService(
             BoardModel board,
             BattleBoardSettingsSO boardSettings,
-            DeckDefinitionSO deck,
+            PlayerDeckModel deck,
             EncounterDefinitionSO encounter,
             int randomSeed)
         {
@@ -80,9 +83,9 @@ namespace PocBattle.Core
         }
 
         /// <summary>
-        /// Creates one runtime object for every physical player-deck and trap copy.
+        /// Builds stage-local board runtime copies while preserving stable run deck instance ids for player-owned blocks.
         /// </summary>
-        private void BuildRuntimeBlocks(DeckDefinitionSO deck, EncounterDefinitionSO encounter)
+        private void BuildRuntimeBlocks(PlayerDeckModel deck, EncounterDefinitionSO encounter)
         {
             if (deck == null)
             {
@@ -94,43 +97,34 @@ namespace PocBattle.Core
                 throw new ArgumentNullException(nameof(encounter));
             }
 
-            int nextBlockId = 0;
-            IReadOnlyList<DeckBlockEntry> entries = deck.Entries;
-            for (int entryIndex = 0; entryIndex < entries.Count; entryIndex++)
+            IReadOnlyList<DeckBlockInstance> deckBlocks = deck.Blocks;
+            for (int blockIndex = 0; blockIndex < deckBlocks.Count; blockIndex++)
             {
-                DeckBlockEntry entry = entries[entryIndex];
-                if (entry == null || entry.Block == null)
-                {
-                    continue;
-                }
-
-                for (int copyIndex = 0; copyIndex < entry.Count; copyIndex++)
-                {
-                    _blocks.Add(new BlockRuntime(nextBlockId++, entry.Block));
-                }
+                DeckBlockInstance deckBlock = deckBlocks[blockIndex];
+                _blocks.Add(new BlockRuntime(deckBlock.InstanceId, deckBlock.Definition));
             }
 
             if (encounter.TrapDefinition != null)
             {
                 for (int trapIndex = 0; trapIndex < encounter.TrapCount; trapIndex++)
                 {
-                    _blocks.Add(new BlockRuntime(nextBlockId++, encounter.TrapDefinition));
+                    _blocks.Add(new BlockRuntime(TRAP_BLOCK_ID_START + trapIndex, encounter.TrapDefinition));
                 }
             }
         }
 
         /// <summary>
-        /// Validates configured player deck maximum and the guaranteed-movement placement capacity.
+        /// Validates player deck board limits and guaranteed-movement placement capacity for this encounter.
         /// </summary>
-        private void ValidateCapacity(DeckDefinitionSO deck, EncounterDefinitionSO encounter)
+        private void ValidateCapacity(PlayerDeckModel deck, EncounterDefinitionSO encounter)
         {
-            IReadOnlyList<DeckBlockEntry> entries = deck.Entries;
-            for (int entryIndex = 0; entryIndex < entries.Count; entryIndex++)
+            IReadOnlyList<DeckBlockInstance> deckBlocks = deck.Blocks;
+            for (int blockIndex = 0; blockIndex < deckBlocks.Count; blockIndex++)
             {
-                DeckBlockEntry entry = entries[entryIndex];
-                if (entry != null && entry.Block != null && entry.Block.IsTrap)
+                BlockDefinitionSO definition = deckBlocks[blockIndex].Definition;
+                if (definition != null && definition.IsTrap)
                 {
-                    throw new InvalidOperationException($"Player deck cannot contain trap block '{entry.Block.DisplayName}'. Traps belong to EncounterDefinitionSO.");
+                    throw new InvalidOperationException($"Player runtime deck cannot contain trap block '{definition.DisplayName}'.");
                 }
             }
 
@@ -139,11 +133,11 @@ namespace PocBattle.Core
                 throw new InvalidOperationException("Encounter TrapDefinition must reference a BlockDefinitionSO with IsTrap enabled.");
             }
 
-            int deckCount = deck.GetTotalBlockCount();
+            int deckCount = deck.Count;
             if (deckCount > _boardSettings.MaxDeckBlockCount)
             {
                 throw new InvalidOperationException(
-                    $"Deck contains {deckCount} blocks, exceeding board MaxDeckBlockCount {_boardSettings.MaxDeckBlockCount}.");
+                    $"Runtime deck contains {deckCount} blocks, exceeding board MaxDeckBlockCount {_boardSettings.MaxDeckBlockCount}.");
             }
 
             int usableCells = _boardSettings.Columns * _boardSettings.Rows;
@@ -157,9 +151,7 @@ namespace PocBattle.Core
             }
         }
 
-        /// <summary>
-        /// Chooses one normal adjacent player cell that remains empty after random placement.
-        /// </summary>
+        /// <summary>Chooses one normal adjacent player cell that remains empty after random placement.</summary>
         private Vector2Int ChooseReservedAdjacentCoordinate()
         {
             _adjacentCandidates.Clear();
@@ -177,9 +169,7 @@ namespace PocBattle.Core
             return _adjacentCandidates[selectedIndex];
         }
 
-        /// <summary>
-        /// Adds one adjacent normal coordinate to the reserve candidate list.
-        /// </summary>
+        /// <summary>Adds one adjacent normal coordinate to the reserve candidate list.</summary>
         private void AddAdjacentCandidate(Vector2Int direction)
         {
             Vector2Int coordinate = _board.PlayerPosition + direction;
@@ -189,9 +179,7 @@ namespace PocBattle.Core
             }
         }
 
-        /// <summary>
-        /// Rebuilds all block-placement coordinates except walls, player cell, and the reserved escape cell.
-        /// </summary>
+        /// <summary>Rebuilds placement coordinates except walls, player cell, and the reserved escape cell.</summary>
         private void RebuildCandidateCoordinates(Vector2Int reservedCoordinate)
         {
             _candidateCoordinates.Clear();
@@ -212,13 +200,11 @@ namespace PocBattle.Core
 
             if (_candidateCoordinates.Count < _blocks.Count)
             {
-                throw new InvalidOperationException("Not enough candidate cells to place all blocks.");
+                throw new InvalidOperationException("Not enough candidate cells to place all runtime deck and trap blocks.");
             }
         }
 
-        /// <summary>
-        /// Performs an in-place Fisher-Yates shuffle without temporary allocations.
-        /// </summary>
+        /// <summary>Performs an in-place Fisher-Yates shuffle without temporary allocations.</summary>
         private void Shuffle(List<Vector2Int> coordinates)
         {
             for (int index = coordinates.Count - 1; index > 0; index--)

@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b9fb8e2f6cb3f6841bc71a50f7ef9d3d, type: 3}
+  m_Name: Stage_04
+  m_EditorClassIdentifier: Assembly-CSharp::PocBattle.Data.StageDefinitionSO
+  _encounterPool:
+  - {fileID: 11400000, guid: 6f8e31c7cb3041942a8cbeba6f9c8181, type: 2}
+  - {fileID: 11400000, guid: 8783fa90069cccf42a3a74981721e47b, type: 2}
+  _lootPool:
+  - _block: {fileID: 11400000, guid: dec4e6ac97a4ae442b30005c2d0e40c5, type: 2}
+    _weight: 4
+  - _block: {fileID: 11400000, guid: bddbd6ce877ca1546ad825bd4dfd5ec1, type: 2}
+    _weight: 4
+  - _block: {fileID: 11400000, guid: 72735bb5ff40b524b906624ce13e55d3, type: 2}
+    _weight: 3
+  - _block: {fileID: 11400000, guid: 95f02ed0e2e8b0c4e8866b6b78c5fb62, type: 2}
+    _weight: 2

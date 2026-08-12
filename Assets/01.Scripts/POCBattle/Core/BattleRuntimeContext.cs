@@ -3,7 +3,8 @@ using PocBattle.Data;
 namespace PocBattle.Core
 {
     /// <summary>
-    /// Composition object that owns pure runtime models and services for one battle session.
+    /// Composition object that owns pure runtime models and services for one stage battle.
+    /// Persistent player/deck progression is injected from PlayerRunModel instead of rebuilt per stage.
     /// </summary>
     public sealed class BattleRuntimeContext
     {
@@ -16,13 +17,13 @@ namespace PocBattle.Core
         /// <summary>Gets logical board.</summary>
         public BoardModel Board { get; }
 
-        /// <summary>Gets persistent block placement service.</summary>
+        /// <summary>Gets persistent block placement service for this stage battle.</summary>
         public BlockPlacementService PlacementService { get; }
 
         /// <summary>Gets deterministic slide resolver.</summary>
         public GridMovementResolver MovementResolver { get; }
 
-        /// <summary>Gets mutable player combat model.</summary>
+        /// <summary>Gets persistent player combat model shared by the complete run.</summary>
         public PlayerCombatModel Player { get; }
 
         /// <summary>Gets current player turn effects.</summary>
@@ -31,7 +32,7 @@ namespace PocBattle.Core
         /// <summary>Gets composable block effect resolver.</summary>
         public BlockEffectResolver BlockEffects { get; }
 
-        /// <summary>Gets ordered enemy party model.</summary>
+        /// <summary>Gets ordered enemy party model for this stage.</summary>
         public EnemyPartyModel EnemyParty { get; }
 
         /// <summary>Gets deterministic enemy action resolver.</summary>
@@ -44,38 +45,33 @@ namespace PocBattle.Core
         public int RemainingEditCount => _remainingEditCount;
 
         /// <summary>
-        /// Creates all pure runtime models and services without GameObject-to-GameObject references.
+        /// Creates stage-local models while reusing persistent run player/deck progression.
         /// </summary>
         public BattleRuntimeContext(
             BattleBoardSettingsSO boardSettings,
-            PlayerBaseStatsSO playerBaseStats,
-            DeckDefinitionSO deck,
+            PlayerRunModel runModel,
             EncounterDefinitionSO encounter,
             int randomSeed)
         {
             Board = new BoardModel(boardSettings);
-            Player = new PlayerCombatModel(playerBaseStats);
+            Player = runModel.Player;
             TurnEffects = new PlayerTurnEffectContext(Player);
             BlockEffects = new BlockEffectResolver(TurnEffects);
             EnemyParty = new EnemyPartyModel(encounter);
-            PlacementService = new BlockPlacementService(Board, boardSettings, deck, encounter, randomSeed);
+            PlacementService = new BlockPlacementService(Board, boardSettings, runModel.Deck, encounter, randomSeed);
             MovementResolver = new GridMovementResolver(Board);
             EnemyTurnResolver = new EnemyTurnResolver(Player, EnemyParty);
             ResetTurnResources();
         }
 
-        /// <summary>
-        /// Copies the player's upgradeable maximum move/edit stats into current-turn counters.
-        /// </summary>
+        /// <summary>Copies upgradeable maximum move/edit stats into current-turn counters.</summary>
         public void ResetTurnResources()
         {
             _remainingMoveCount = Player.MaxMoveCount;
             _remainingEditCount = Player.MaxEditCount;
         }
 
-        /// <summary>
-        /// Consumes one successful movement if a move remains.
-        /// </summary>
+        /// <summary>Consumes one successful movement if a move remains.</summary>
         public bool TryConsumeMove()
         {
             if (_remainingMoveCount <= 0)
@@ -87,9 +83,7 @@ namespace PocBattle.Core
             return true;
         }
 
-        /// <summary>
-        /// Consumes one successful placement edit if an edit remains.
-        /// </summary>
+        /// <summary>Consumes one successful placement edit if an edit remains.</summary>
         public bool TryConsumeEdit()
         {
             if (_remainingEditCount <= 0)

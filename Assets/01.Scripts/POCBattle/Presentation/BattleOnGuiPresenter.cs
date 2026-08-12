@@ -19,6 +19,9 @@ namespace PocBattle.Presentation
         /// <summary>Current terminal battle result.</summary>
         private BattleResult _battleResult;
 
+        /// <summary>Current top-level run phase. Non-None means terminal battle UI is owned by RunOnGuiPresenter.</summary>
+        private RunPhase _currentRunPhase;
+
         /// <summary>Cached phase label rebuilt only when phase changes.</summary>
         private string _phaseLabel = "PHASE: NONE";
 
@@ -74,6 +77,7 @@ namespace PocBattle.Presentation
             }
 
             _eventChannel.PhaseChanged += HandlePhaseChanged;
+            _eventChannel.RunPhaseChanged += HandleRunPhaseChanged;
             _eventChannel.PlayerStatusChanged += HandlePlayerStatusChanged;
             _eventChannel.TurnResourcesChanged += HandleTurnResourcesChanged;
             _eventChannel.TurnEffectsChanged += HandleTurnEffectsChanged;
@@ -94,6 +98,7 @@ namespace PocBattle.Presentation
             }
 
             _eventChannel.PhaseChanged -= HandlePhaseChanged;
+            _eventChannel.RunPhaseChanged -= HandleRunPhaseChanged;
             _eventChannel.PlayerStatusChanged -= HandlePlayerStatusChanged;
             _eventChannel.TurnResourcesChanged -= HandleTurnResourcesChanged;
             _eventChannel.TurnEffectsChanged -= HandleTurnEffectsChanged;
@@ -109,6 +114,13 @@ namespace PocBattle.Presentation
         /// </summary>
         private void OnGUI()
         {
+            // Standalone battle mode has RunPhase.None. In run-managed mode, battle HUD is intentionally hidden
+            // during looting, fade transitions, and terminal run prompts so modal/world-loot input cannot overlap stale battle UI.
+            if (_currentRunPhase != RunPhase.None && _currentRunPhase != RunPhase.Battle)
+            {
+                return;
+            }
+
             EnsureStyles();
             DrawPlayerBattlePanel();
             DrawEnemyPanels();
@@ -213,7 +225,8 @@ namespace PocBattle.Presentation
         /// </summary>
         private void DrawManualPhaseButton()
         {
-            if (!BattleOnGuiLayoutUtility.CanManuallyEndPhase(_currentPhase))
+            if ((_currentRunPhase != RunPhase.None && _currentRunPhase != RunPhase.Battle)
+                || !BattleOnGuiLayoutUtility.CanManuallyEndPhase(_currentPhase))
             {
                 return;
             }
@@ -229,7 +242,7 @@ namespace PocBattle.Presentation
         /// </summary>
         private void DrawBattleResult()
         {
-            if (_battleResult == BattleResult.None)
+            if (_currentRunPhase != RunPhase.None || _battleResult == BattleResult.None)
             {
                 return;
             }
@@ -255,6 +268,12 @@ namespace PocBattle.Presentation
             _currentPhase = phase;
             _phaseLabel = $"PHASE: {GetPhaseLabel(phase)}";
             _endPhaseButtonLabel = phase == BattlePhase.PlacementEdit ? "END EDIT" : "END MOVE";
+        }
+
+        /// <summary>Stores the top-level run phase so run-managed victory/defeat overlays are not duplicated.</summary>
+        private void HandleRunPhaseChanged(RunPhase phase)
+        {
+            _currentRunPhase = phase;
         }
 
         /// <summary>

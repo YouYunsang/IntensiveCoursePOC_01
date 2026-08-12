@@ -14,5 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PocBattle.Data.EnemyDefinitionSO
   _displayName: Enemy
   _maxHealth: 20
+  _goldReward: 15
   _displayColor: {r: 1, g: 1, b: 1, a: 1}
   _pattern: {fileID: 11400000, guid: 2717cf406f7697f46967070f069f9936, type: 2}

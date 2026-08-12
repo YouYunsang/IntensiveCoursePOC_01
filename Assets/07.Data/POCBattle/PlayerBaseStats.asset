@@ -15,3 +15,4 @@ MonoBehaviour:
   _maxHealth: 20
   _baseMoveCount: 4
   _baseEditCount: 3
+  _deckCapacity: 10

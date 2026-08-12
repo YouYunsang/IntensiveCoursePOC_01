@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 01339437a75e8c542b32faacf3d913c6, type: 3}
+  m_Name: Run_POC
+  m_EditorClassIdentifier: Assembly-CSharp::PocBattle.Data.RunDefinitionSO
+  _stages:
+  - {fileID: 11400000, guid: ea7b7571a459cd74794b5398ddd61624, type: 2}
+  - {fileID: 11400000, guid: 8f0cc6b5dcca3f74db1e36c370bcd779, type: 2}
+  - {fileID: 11400000, guid: e645028b683297848b1de89e4b1b5388, type: 2}
+  - {fileID: 11400000, guid: 5703770929dcbc843858723318532dd4, type: 2}
+  - {fileID: 11400000, guid: e48107a41349a8941bacd39b0569bc69, type: 2}
+  _useFixedRandomSeed: 0
+  _fixedRandomSeed: 24680

@@ -29,6 +29,9 @@ namespace PocBattle.Presentation
         /// <summary>Current high-level battle phase received through the event channel.</summary>
         private BattlePhase _currentPhase;
 
+        /// <summary>Current top-level run phase used to hard-disable battle input during loot/fade/result states.</summary>
+        private RunPhase _currentRunPhase;
+
         /// <summary>
         /// Subscribes to player-specific presentation events and phase state.
         /// </summary>
@@ -40,6 +43,7 @@ namespace PocBattle.Presentation
             }
 
             _eventChannel.PhaseChanged += HandlePhaseChanged;
+            _eventChannel.RunPhaseChanged += HandleRunPhaseChanged;
             _eventChannel.PlayerPositionSyncRequested += HandlePlayerPositionSyncRequested;
             _eventChannel.PlayerMoveVisualRequested += HandlePlayerMoveVisualRequested;
             _eventChannel.PlayerHitVisualRequested += HandlePlayerHitVisualRequested;
@@ -56,6 +60,7 @@ namespace PocBattle.Presentation
             }
 
             _eventChannel.PhaseChanged -= HandlePhaseChanged;
+            _eventChannel.RunPhaseChanged -= HandleRunPhaseChanged;
             _eventChannel.PlayerPositionSyncRequested -= HandlePlayerPositionSyncRequested;
             _eventChannel.PlayerMoveVisualRequested -= HandlePlayerMoveVisualRequested;
             _eventChannel.PlayerHitVisualRequested -= HandlePlayerHitVisualRequested;
@@ -66,7 +71,10 @@ namespace PocBattle.Presentation
         /// </summary>
         private void Update()
         {
-            if (_currentPhase != BattlePhase.Movement || _movement == null || _movement.IsAnimating)
+            if ((_currentRunPhase != RunPhase.None && _currentRunPhase != RunPhase.Battle)
+                || _currentPhase != BattlePhase.Movement
+                || _movement == null
+                || _movement.IsAnimating)
             {
                 return;
             }
@@ -91,6 +99,12 @@ namespace PocBattle.Presentation
         private void HandlePhaseChanged(BattlePhase phase)
         {
             _currentPhase = phase;
+        }
+
+        /// <summary>Stores the current run phase so movement input cannot leak into looting or stage transitions.</summary>
+        private void HandleRunPhaseChanged(RunPhase phase)
+        {
+            _currentRunPhase = phase;
         }
 
         /// <summary>

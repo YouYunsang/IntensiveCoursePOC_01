@@ -3,7 +3,7 @@ using UnityEngine;
 namespace PocBattle.Data
 {
     /// <summary>
-    /// Defines one enemy archetype and its deterministic action pattern.
+    /// Defines one enemy archetype, deterministic action pattern, and run reward values.
     /// </summary>
     [CreateAssetMenu(menuName = "POC Battle/Enemies/Enemy Definition", fileName = "EnemyDefinition")]
     public sealed class EnemyDefinitionSO : ScriptableObject
@@ -13,6 +13,9 @@ namespace PocBattle.Data
 
         [SerializeField, Tooltip("Maximum enemy health.")]
         private int _maxHealth = 20;
+
+        [SerializeField, Tooltip("Gold awarded immediately when this enemy is defeated.")]
+        private int _goldReward = 10;
 
         [SerializeField, Tooltip("POC sprite tint used by the enemy view.")]
         private Color _displayColor = Color.white;
@@ -26,6 +29,9 @@ namespace PocBattle.Data
         /// <summary>Gets maximum health.</summary>
         public int MaxHealth => _maxHealth;
 
+        /// <summary>Gets gold granted on defeat.</summary>
+        public int GoldReward => _goldReward;
+
         /// <summary>Gets POC sprite tint.</summary>
         public Color DisplayColor => _displayColor;
 
@@ -33,11 +39,12 @@ namespace PocBattle.Data
         public EnemyActionPatternDefinitionSO Pattern => _pattern;
 
         /// <summary>
-        /// Keeps health at a valid positive value.
+        /// Keeps health and gold rewards within valid ranges.
         /// </summary>
         private void OnValidate()
         {
             _maxHealth = Mathf.Max(1, _maxHealth);
+            _goldReward = Mathf.Max(0, _goldReward);
         }
     }
 }

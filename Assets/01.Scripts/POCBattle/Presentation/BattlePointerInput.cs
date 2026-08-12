@@ -40,6 +40,9 @@ namespace PocBattle.Presentation
         /// <summary>Current phase used to allow edit pointer input only during placement editing.</summary>
         private BattlePhase _currentPhase;
 
+        /// <summary>Current top-level run phase used to disable board dragging during loot/fade/result states.</summary>
+        private RunPhase _currentRunPhase;
+
         /// <summary>Current battle result used only for shared IMGUI hit-region checks.</summary>
         private BattleResult _battleResult;
 
@@ -73,6 +76,7 @@ namespace PocBattle.Presentation
             }
 
             _eventChannel.PhaseChanged += HandlePhaseChanged;
+            _eventChannel.RunPhaseChanged += HandleRunPhaseChanged;
             _eventChannel.BattleResultChanged += HandleBattleResultChanged;
             _eventChannel.EnemyPartySetupRequested += HandleEnemyPartySetupRequested;
         }
@@ -85,6 +89,7 @@ namespace PocBattle.Presentation
             if (_eventChannel != null)
             {
                 _eventChannel.PhaseChanged -= HandlePhaseChanged;
+                _eventChannel.RunPhaseChanged -= HandleRunPhaseChanged;
                 _eventChannel.BattleResultChanged -= HandleBattleResultChanged;
                 _eventChannel.EnemyPartySetupRequested -= HandleEnemyPartySetupRequested;
             }
@@ -97,7 +102,9 @@ namespace PocBattle.Presentation
         /// </summary>
         private void Update()
         {
-            if (_currentPhase != BattlePhase.PlacementEdit || Mouse.current == null)
+            if ((_currentRunPhase != RunPhase.None && _currentRunPhase != RunPhase.Battle)
+                || _currentPhase != BattlePhase.PlacementEdit
+                || Mouse.current == null)
             {
                 return;
             }
@@ -228,6 +235,16 @@ namespace PocBattle.Presentation
         {
             _currentPhase = phase;
             if (phase != BattlePhase.PlacementEdit)
+            {
+                _interactionState = EditPointerInteractionState.Idle;
+            }
+        }
+
+        /// <summary>Stores run phase and cancels local pointer ownership whenever battle interaction is not active.</summary>
+        private void HandleRunPhaseChanged(RunPhase phase)
+        {
+            _currentRunPhase = phase;
+            if (phase != RunPhase.Battle)
             {
                 _interactionState = EditPointerInteractionState.Idle;
             }

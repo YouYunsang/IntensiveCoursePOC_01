@@ -1,5 +1,6 @@
 using PocBattle.Core;
 using PocBattle.Data;
+using UnityEngine;
 
 namespace PocBattle.Runtime
 {
@@ -8,9 +9,7 @@ namespace PocBattle.Runtime
     /// </summary>
     public sealed class PlayerBattleResolveState : BattleStateBase
     {
-        /// <summary>
-        /// Creates automatic player battle resolution state.
-        /// </summary>
+        /// <summary>Creates automatic player battle resolution state.</summary>
         public PlayerBattleResolveState(
             BattleRuntimeContext context,
             BattlePresentationSettingsSO presentationSettings,
@@ -21,18 +20,27 @@ namespace PocBattle.Runtime
         }
 
         /// <summary>
-        /// Damages the front living enemy, grants pending shield, and schedules enemy turn or victory.
+        /// Damages the front living enemy, publishes defeat/gold/death presentation exactly once, grants shield, and schedules next phase.
         /// </summary>
         public override void Enter()
         {
             int finalDamage = Context.TurnEffects.CalculateFinalDamage(PresentationSettings.CriticalMultiplier);
             EnemyCombatModel targetEnemy = Context.EnemyParty.GetFrontAliveEnemy();
+            bool defeatedEnemyThisResolution = false;
 
             if (targetEnemy != null && finalDamage > 0)
             {
+                bool wasAlive = targetEnemy.IsAlive;
                 targetEnemy.ApplyDamage(finalDamage);
                 EventChannel.RaiseEnemyHitVisualRequested(targetEnemy.PartyIndex);
                 Publisher.PublishEnemyStatus(targetEnemy);
+
+                if (wasAlive && !targetEnemy.IsAlive)
+                {
+                    defeatedEnemyThisResolution = true;
+                    EventChannel.RaiseEnemyDefeated(targetEnemy.PartyIndex, targetEnemy.Definition.GoldReward);
+                    EventChannel.RaiseEnemyDeathVisualRequested(targetEnemy.PartyIndex);
+                }
             }
 
             if (Context.TurnEffects.PendingShield > 0)
@@ -43,8 +51,15 @@ namespace PocBattle.Runtime
             Publisher.PublishPlayerStatus();
             Publisher.PublishTurnEffects();
 
-            BattlePhase nextPhase = Context.EnemyParty.AreAllDefeated() ? BattlePhase.Victory : BattlePhase.EnemyTurn;
-            RequestTransition(nextPhase, PresentationSettings.PlayerResolveDelay);
+            bool battleWon = Context.EnemyParty.AreAllDefeated();
+            BattlePhase nextPhase = battleWon ? BattlePhase.Victory : BattlePhase.EnemyTurn;
+            float delay = PresentationSettings.PlayerResolveDelay;
+            if (battleWon && defeatedEnemyThisResolution)
+            {
+                delay = Mathf.Max(delay, PresentationSettings.EnemyDeathDuration);
+            }
+
+            RequestTransition(nextPhase, delay);
         }
     }
 }

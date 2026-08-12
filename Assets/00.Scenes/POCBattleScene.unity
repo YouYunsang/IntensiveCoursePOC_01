@@ -338,6 +338,8 @@ GameObject:
   - component: {fileID: 1390909608}
   - component: {fileID: 1390909607}
   - component: {fileID: 1390909609}
+  - component: {fileID: 1390909611}
+  - component: {fileID: 1390909610}
   m_Layer: 0
   m_Name: BattleRoot
   m_TagString: Untagged
@@ -363,6 +365,7 @@ MonoBehaviour:
   _deck: {fileID: 11400000, guid: 3687ded2df69f024ab5d692a6102f811, type: 2}
   _encounter: {fileID: 11400000, guid: 6f8e31c7cb3041942a8cbeba6f9c8181, type: 2}
   _eventChannel: {fileID: 11400000, guid: 51e0d733e8587fb4f8e49c1607279059, type: 2}
+  _autoStartStandalone: 0
 --- !u!4 &1390909608
 Transform:
   m_ObjectHideFlags: 0
@@ -391,6 +394,87 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PocBattle.Presentation.BattleOnGuiPresenter
   _eventChannel: {fileID: 11400000, guid: 51e0d733e8587fb4f8e49c1607279059, type: 2}
+--- !u!114 &1390909610
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1390909606}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8852dfe4cd41c4f4b91f913db68e2893, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PocBattle.Presentation.RunOnGuiPresenter
+  _eventChannel: {fileID: 11400000, guid: 51e0d733e8587fb4f8e49c1607279059, type: 2}
+  _presentationSettings: {fileID: 11400000, guid: 82d72e2841bf9b64e8efe536b6ccb097, type: 2}
+--- !u!114 &1390909611
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1390909606}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e1a64d4b88e905a418495683a68bb139, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PocBattle.Runtime.RunController
+  _battleController: {fileID: 1390909607}
+  _playerBaseStats: {fileID: 11400000, guid: ea8c0dbf8590d8744bfaf0d2d6b91aed, type: 2}
+  _startingDeck: {fileID: 11400000, guid: 3687ded2df69f024ab5d692a6102f811, type: 2}
+  _runDefinition: {fileID: 11400000, guid: 7f988d99714f66a44b88579674ceb1ec, type: 2}
+  _boardSettings: {fileID: 11400000, guid: 78ed7969bf46e924aa6f0e13c4c58e39, type: 2}
+  _presentationSettings: {fileID: 11400000, guid: 82d72e2841bf9b64e8efe536b6ccb097, type: 2}
+  _eventChannel: {fileID: 11400000, guid: 51e0d733e8587fb4f8e49c1607279059, type: 2}
+--- !u!1 &1398890167
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1398890169}
+  - component: {fileID: 1398890168}
+  m_Layer: 0
+  m_Name: LootRoot
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1398890168
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1398890167}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: da79e2dfc92c3724c9bc0d30f2cb8e71, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PocBattle.Presentation.LootDropPresenter
+  _eventChannel: {fileID: 11400000, guid: 51e0d733e8587fb4f8e49c1607279059, type: 2}
+  _boardSettings: {fileID: 11400000, guid: 78ed7969bf46e924aa6f0e13c4c58e39, type: 2}
+  _presentationSettings: {fileID: 11400000, guid: 82d72e2841bf9b64e8efe536b6ccb097, type: 2}
+  _blockPrefab: {fileID: 3906092088353711552, guid: 565b729bb6115be47a753ae10ffa05bd, type: 3}
+--- !u!4 &1398890169
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1398890167}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1406260232
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -513,6 +597,7 @@ GameObject:
   - component: {fileID: 2134307550}
   - component: {fileID: 2134307549}
   - component: {fileID: 2134307553}
+  - component: {fileID: 2134307554}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -657,6 +742,21 @@ MonoBehaviour:
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
   m_Version: 2
+--- !u!114 &2134307554
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2134307548}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 10d949a2b402e724f91d4d3ae6864478, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PocBattle.Presentation.LootPointerInput
+  _eventChannel: {fileID: 11400000, guid: 51e0d733e8587fb4f8e49c1607279059, type: 2}
+  _presentationSettings: {fileID: 11400000, guid: 82d72e2841bf9b64e8efe536b6ccb097, type: 2}
+  _camera: {fileID: 2134307551}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -667,3 +767,4 @@ SceneRoots:
   - {fileID: 779965955}
   - {fileID: 168717679}
   - {fileID: 1939902998}
+  - {fileID: 1398890169}

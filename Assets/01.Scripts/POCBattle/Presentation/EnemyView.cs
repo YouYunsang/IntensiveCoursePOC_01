@@ -1,3 +1,4 @@
+using System;
 using DG.Tweening;
 using PocBattle.Runtime;
 using UnityEngine;
@@ -5,7 +6,7 @@ using UnityEngine;
 namespace PocBattle.Presentation
 {
     /// <summary>
-    /// Displays only one world-space enemy sprite. POC status and intent information is rendered by BattleOnGuiPresenter.
+    /// Displays one world-space enemy sprite. Combat data remains outside the view; this class owns only presentation tweens.
     /// </summary>
     public sealed class EnemyView : MonoBehaviour
     {
@@ -18,9 +19,7 @@ namespace PocBattle.Presentation
         /// <summary>Gets represented party index.</summary>
         public int EnemyIndex => _enemyIndex;
 
-        /// <summary>
-        /// Caches the same-GameObject SpriteRenderer when a manually created prefab omitted the Reset assignment.
-        /// </summary>
+        /// <summary>Caches same-GameObject SpriteRenderer as a runtime safeguard.</summary>
         private void Awake()
         {
             if (_spriteRenderer == null)
@@ -29,30 +28,31 @@ namespace PocBattle.Presentation
             }
         }
 
-        /// <summary>
-        /// Kills hit feedback tweens when this view is reused or disabled.
-        /// </summary>
+        /// <summary>Kills presentation tweens when this reusable view is disabled.</summary>
         private void OnDisable()
         {
             transform.DOKill();
+            _spriteRenderer?.DOKill();
         }
 
         /// <summary>
-        /// Configures stable identity and world-sprite tint only.
+        /// Restores reusable view state and applies stable identity/tint for the current stage enemy.
         /// </summary>
         public void Configure(EnemySetupSnapshot setupSnapshot)
         {
             _enemyIndex = setupSnapshot.EnemyIndex;
+            transform.DOKill();
+            _spriteRenderer?.DOKill();
 
             if (_spriteRenderer != null)
             {
-                _spriteRenderer.color = setupSnapshot.DisplayColor;
+                Color color = setupSnapshot.DisplayColor;
+                color.a = 1f;
+                _spriteRenderer.color = color;
             }
         }
 
-        /// <summary>
-        /// Plays DOTween hit feedback without changing enemy combat state.
-        /// </summary>
+        /// <summary>Plays short hit punch feedback without mutating enemy combat data.</summary>
         public void PlayHit(float duration, float strength, int vibrato, float elasticity)
         {
             transform.DOKill();
@@ -60,8 +60,28 @@ namespace PocBattle.Presentation
         }
 
         /// <summary>
-        /// Caches the same-GameObject SpriteRenderer for inspector-friendly prefab authoring.
+        /// Shrinks and fades a defeated enemy, then disables the reusable view so loot can occupy its former position cleanly.
         /// </summary>
+        public void PlayDeath(float duration, Action completed)
+        {
+            transform.DOKill();
+            _spriteRenderer?.DOKill();
+
+            Sequence sequence = DOTween.Sequence();
+            sequence.Join(transform.DOScale(Vector3.zero, duration).SetEase(Ease.InBack));
+            if (_spriteRenderer != null)
+            {
+                sequence.Join(_spriteRenderer.DOFade(0f, duration).SetEase(Ease.InQuad));
+            }
+
+            sequence.OnComplete(() =>
+            {
+                gameObject.SetActive(false);
+                completed?.Invoke();
+            });
+        }
+
+        /// <summary>Caches same-GameObject SpriteRenderer for inspector-friendly prefab authoring.</summary>
         private void Reset()
         {
             _spriteRenderer = GetComponent<SpriteRenderer>();

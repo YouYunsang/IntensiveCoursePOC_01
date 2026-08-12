@@ -69,6 +69,10 @@ namespace PocBattle.Presentation
                     line = $"HP -{damage.Damage}";
                     return true;
 
+                case HealBlockEffectSO heal:
+                    line = $"HP +{heal.Amount}";
+                    return true;
+
                 default:
                     line = string.Empty;
                     return false;

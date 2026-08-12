@@ -317,7 +317,7 @@ namespace PocBattle.Runtime
     /// Shared ScriptableObject signal hub used so separate GameObjects communicate through events instead of direct references.
     /// </summary>
     [CreateAssetMenu(menuName = "POC Battle/Runtime/Battle Event Channel", fileName = "BattleEventChannel")]
-    public sealed class BattleEventChannelSO : ScriptableObject
+    public sealed partial class BattleEventChannelSO : ScriptableObject
     {
         /// <summary>Raised by player input when a cardinal move is pressed.</summary>
         public event Action<Vector2Int> MoveInputRequested;

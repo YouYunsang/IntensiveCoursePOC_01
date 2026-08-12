@@ -44,5 +44,15 @@ MonoBehaviour:
   _enemyStartPosition: {x: 0, y: 2, z: 6.5}
   _enemySpacing: 3
   _enemyEulerAngles: {x: 45, y: 0, z: 0}
-  _enemyScale: 2.9
+  _enemyScale: 2
+  _enemyDeathDuration: 0.3
+  _lootBlockScaleMultiplier: 1.15
+  _lootHeightOffset: 0.4
+  _lootFloatHeight: 0.25
+  _lootFloatDuration: 0.8
+  _lootGlowIntensity: 2.5
+  _lootGlowRange: 3
+  _lootGlowPulseDuration: 0.65
+  _lootClickRadiusPixels: 90
+  _stageFadeDuration: 0.45
   _pointerRayDistance: 100

@@ -4,7 +4,7 @@ using UnityEngine;
 namespace PocBattle.Core
 {
     /// <summary>
-    /// Mutable player combat and upgradeable turn-resource state.
+    /// Mutable player combat and upgradeable turn-resource state persisted across all stages in one run.
     /// </summary>
     public sealed class PlayerCombatModel
     {
@@ -54,6 +54,14 @@ namespace PocBattle.Core
         }
 
         /// <summary>
+        /// Clears stage-transient combat values while preserving HP and upgraded per-turn stats between stages.
+        /// </summary>
+        public void ResetTransientForNewStage()
+        {
+            _shield = 0;
+        }
+
+        /// <summary>
         /// Clears remaining shield at the beginning of the player's next turn.
         /// </summary>
         public void ResetShieldForOwnTurn()
@@ -67,6 +75,14 @@ namespace PocBattle.Core
         public void AddShield(int amount)
         {
             _shield += Mathf.Max(0, amount);
+        }
+
+        /// <summary>
+        /// Restores HP immediately without exceeding maximum health.
+        /// </summary>
+        public void Heal(int amount)
+        {
+            _currentHealth = Mathf.Min(_maxHealth, _currentHealth + Mathf.Max(0, amount));
         }
 
         /// <summary>

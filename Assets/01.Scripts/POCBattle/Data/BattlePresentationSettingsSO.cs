@@ -114,6 +114,39 @@ namespace PocBattle.Data
         [SerializeField, Tooltip("Uniform scale applied to enemy sprite roots.")]
         private float _enemyScale = 1.7f;
 
+        [Header("Enemy Death")]
+        [SerializeField, Tooltip("Duration of the defeated enemy shrink/fade before post-battle looting begins.")]
+        private float _enemyDeathDuration = 0.3f;
+
+        [Header("Loot")]
+        [SerializeField, Tooltip("Uniform scale multiplier applied to the floating loot block relative to a normal board block.")]
+        private float _lootBlockScaleMultiplier = 1.15f;
+
+        [SerializeField, Tooltip("Vertical offset from the defeated enemy position to the floating loot block center.")]
+        private float _lootHeightOffset = 0.4f;
+
+        [SerializeField, Tooltip("Vertical distance traveled by the looping floating loot animation.")]
+        private float _lootFloatHeight = 0.25f;
+
+        [SerializeField, Tooltip("Seconds used for one direction of the looping floating loot animation.")]
+        private float _lootFloatDuration = 0.8f;
+
+        [SerializeField, Tooltip("Base point-light intensity used to make the dropped loot glow.")]
+        private float _lootGlowIntensity = 2.5f;
+
+        [SerializeField, Tooltip("Point-light range used by the dropped loot glow.")]
+        private float _lootGlowRange = 3f;
+
+        [SerializeField, Tooltip("Seconds used for one direction of the loot glow pulse.")]
+        private float _lootGlowPulseDuration = 0.65f;
+
+        [SerializeField, Tooltip("Screen-space radius around the floating loot anchor that accepts a left-click.")]
+        private float _lootClickRadiusPixels = 90f;
+
+        [Header("Stage Transition")]
+        [SerializeField, Tooltip("Seconds used by both fade-out and fade-in between run stages.")]
+        private float _stageFadeDuration = 0.45f;
+
         [Header("Pointer")]
         [SerializeField, Tooltip("Maximum world raycast distance used for edit-phase mouse selection.")]
         private float _pointerRayDistance = 100f;
@@ -217,6 +250,36 @@ namespace PocBattle.Data
         /// <summary>Gets enemy scale.</summary>
         public float EnemyScale => _enemyScale;
 
+        /// <summary>Gets defeated enemy death animation duration.</summary>
+        public float EnemyDeathDuration => _enemyDeathDuration;
+
+        /// <summary>Gets loot block scale multiplier.</summary>
+        public float LootBlockScaleMultiplier => _lootBlockScaleMultiplier;
+
+        /// <summary>Gets vertical offset from defeated enemy to loot center.</summary>
+        public float LootHeightOffset => _lootHeightOffset;
+
+        /// <summary>Gets loot float travel distance.</summary>
+        public float LootFloatHeight => _lootFloatHeight;
+
+        /// <summary>Gets loot float half-cycle duration.</summary>
+        public float LootFloatDuration => _lootFloatDuration;
+
+        /// <summary>Gets base loot glow intensity.</summary>
+        public float LootGlowIntensity => _lootGlowIntensity;
+
+        /// <summary>Gets loot glow range.</summary>
+        public float LootGlowRange => _lootGlowRange;
+
+        /// <summary>Gets loot glow pulse half-cycle duration.</summary>
+        public float LootGlowPulseDuration => _lootGlowPulseDuration;
+
+        /// <summary>Gets screen-space loot click radius.</summary>
+        public float LootClickRadiusPixels => _lootClickRadiusPixels;
+
+        /// <summary>Gets stage fade duration.</summary>
+        public float StageFadeDuration => _stageFadeDuration;
+
         /// <summary>Gets edit pointer ray distance.</summary>
         public float PointerRayDistance => _pointerRayDistance;
 
@@ -251,6 +314,16 @@ namespace PocBattle.Data
             _hitPunchElasticity = Mathf.Clamp01(_hitPunchElasticity);
             _enemySpacing = Mathf.Max(0.1f, _enemySpacing);
             _enemyScale = Mathf.Max(0.1f, _enemyScale);
+            _enemyDeathDuration = Mathf.Max(0.01f, _enemyDeathDuration);
+            _lootBlockScaleMultiplier = Mathf.Max(0.1f, _lootBlockScaleMultiplier);
+            _lootHeightOffset = Mathf.Max(0f, _lootHeightOffset);
+            _lootFloatHeight = Mathf.Max(0f, _lootFloatHeight);
+            _lootFloatDuration = Mathf.Max(0.05f, _lootFloatDuration);
+            _lootGlowIntensity = Mathf.Max(0f, _lootGlowIntensity);
+            _lootGlowRange = Mathf.Max(0.1f, _lootGlowRange);
+            _lootGlowPulseDuration = Mathf.Max(0.05f, _lootGlowPulseDuration);
+            _lootClickRadiusPixels = Mathf.Max(1f, _lootClickRadiusPixels);
+            _stageFadeDuration = Mathf.Max(0.01f, _stageFadeDuration);
             _pointerRayDistance = Mathf.Max(1f, _pointerRayDistance);
         }
 

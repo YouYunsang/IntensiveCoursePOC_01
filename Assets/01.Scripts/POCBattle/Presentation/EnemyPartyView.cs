@@ -6,14 +6,14 @@ using UnityEngine;
 namespace PocBattle.Presentation
 {
     /// <summary>
-    /// Creates/reuses world enemy sprite views from setup events. Enemy status/intent UI is handled separately by OnGUI.
+    /// Creates/reuses world enemy sprite views and publishes their anchors without exposing GameObject references to run logic.
     /// </summary>
     public sealed class EnemyPartyView : MonoBehaviour
     {
-        [SerializeField, Tooltip("Shared battle event hub.")]
+        [SerializeField, Tooltip("Shared battle/run event hub.")]
         private BattleEventChannelSO _eventChannel;
 
-        [SerializeField, Tooltip("World-space enemy placement and hit feedback settings.")]
+        [SerializeField, Tooltip("World-space enemy placement, hit, and death feedback settings.")]
         private BattlePresentationSettingsSO _presentationSettings;
 
         [SerializeField, Tooltip("Generic 2D enemy sprite prefab reused for all POC enemy definitions.")]
@@ -25,18 +25,14 @@ namespace PocBattle.Presentation
         /// <summary>Reusable set of enemy indices present in the latest encounter setup.</summary>
         private HashSet<int> _activeEnemyIndices;
 
-        /// <summary>
-        /// Allocates reusable enemy lookup containers once.
-        /// </summary>
+        /// <summary>Allocates reusable lookup containers once.</summary>
         private void Awake()
         {
             _enemyViews = new Dictionary<int, EnemyView>();
             _activeEnemyIndices = new HashSet<int>();
         }
 
-        /// <summary>
-        /// Subscribes only to enemy world-view setup and hit-feedback events.
-        /// </summary>
+        /// <summary>Subscribes only to world-view setup, hit, and death presentation events.</summary>
         private void OnEnable()
         {
             if (_eventChannel == null)
@@ -46,11 +42,10 @@ namespace PocBattle.Presentation
 
             _eventChannel.EnemyPartySetupRequested += HandleEnemyPartySetupRequested;
             _eventChannel.EnemyHitVisualRequested += HandleEnemyHitVisualRequested;
+            _eventChannel.EnemyDeathVisualRequested += HandleEnemyDeathVisualRequested;
         }
 
-        /// <summary>
-        /// Removes all enemy world-view event subscriptions.
-        /// </summary>
+        /// <summary>Removes all enemy world-view event subscriptions.</summary>
         private void OnDisable()
         {
             if (_eventChannel == null)
@@ -60,10 +55,11 @@ namespace PocBattle.Presentation
 
             _eventChannel.EnemyPartySetupRequested -= HandleEnemyPartySetupRequested;
             _eventChannel.EnemyHitVisualRequested -= HandleEnemyHitVisualRequested;
+            _eventChannel.EnemyDeathVisualRequested -= HandleEnemyDeathVisualRequested;
         }
 
         /// <summary>
-        /// Creates or reuses one sprite view per encounter enemy without storing EnemyController/runtime model references.
+        /// Creates/reuses one sprite view per encounter enemy and publishes each world anchor after positioning.
         /// </summary>
         private void HandleEnemyPartySetupRequested(IReadOnlyList<EnemySetupSnapshot> snapshots)
         {
@@ -93,11 +89,13 @@ namespace PocBattle.Presentation
 
                 enemyView.gameObject.SetActive(true);
                 enemyView.name = $"Enemy_{snapshot.EnemyIndex}_{snapshot.DisplayName}";
-                enemyView.transform.position = _presentationSettings.EnemyStartPosition
-                                               + Vector3.right * (_presentationSettings.EnemySpacing * snapshot.EnemyIndex);
+                Vector3 worldPosition = _presentationSettings.EnemyStartPosition
+                                        + Vector3.right * (_presentationSettings.EnemySpacing * snapshot.EnemyIndex);
+                enemyView.transform.position = worldPosition;
                 enemyView.transform.rotation = Quaternion.Euler(_presentationSettings.EnemyEulerAngles);
                 enemyView.transform.localScale = Vector3.one * _presentationSettings.EnemyScale;
                 enemyView.Configure(snapshot);
+                _eventChannel.RaiseEnemyWorldAnchorChanged(snapshot.EnemyIndex, worldPosition);
             }
 
             foreach (KeyValuePair<int, EnemyView> enemyPair in _enemyViews)
@@ -109,9 +107,7 @@ namespace PocBattle.Presentation
             }
         }
 
-        /// <summary>
-        /// Plays hit feedback on the enemy selected by stable party index.
-        /// </summary>
+        /// <summary>Plays hit feedback on the enemy selected by stable party index.</summary>
         private void HandleEnemyHitVisualRequested(int enemyIndex)
         {
             if (_presentationSettings == null)
@@ -119,13 +115,29 @@ namespace PocBattle.Presentation
                 return;
             }
 
-            if (_enemyViews.TryGetValue(enemyIndex, out EnemyView enemyView))
+            if (_enemyViews.TryGetValue(enemyIndex, out EnemyView enemyView) && enemyView.gameObject.activeSelf)
             {
                 enemyView.PlayHit(
                     _presentationSettings.EnemyHitDuration,
                     _presentationSettings.EnemyHitStrength,
                     _presentationSettings.HitPunchVibrato,
                     _presentationSettings.HitPunchElasticity);
+            }
+        }
+
+        /// <summary>
+        /// Plays defeated enemy presentation. Run logic already cached this enemy's anchor through setup events.
+        /// </summary>
+        private void HandleEnemyDeathVisualRequested(int enemyIndex)
+        {
+            if (_presentationSettings == null)
+            {
+                return;
+            }
+
+            if (_enemyViews.TryGetValue(enemyIndex, out EnemyView enemyView) && enemyView.gameObject.activeSelf)
+            {
+                enemyView.PlayDeath(_presentationSettings.EnemyDeathDuration, null);
             }
         }
     }

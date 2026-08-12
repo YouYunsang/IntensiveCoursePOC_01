@@ -18,6 +18,9 @@ namespace PocBattle.Data
 
         /// <summary>Immediately reduces player HP without waiting for battle resolution.</summary>
         void ApplyImmediateDamage(int amount);
+
+        /// <summary>Immediately restores player HP without exceeding maximum HP.</summary>
+        void ApplyImmediateHeal(int amount);
     }
 
     /// <summary>

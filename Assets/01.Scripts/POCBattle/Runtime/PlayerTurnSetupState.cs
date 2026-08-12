@@ -1,5 +1,6 @@
 using PocBattle.Core;
 using PocBattle.Data;
+using UnityEngine;
 
 namespace PocBattle.Runtime
 {
@@ -34,8 +35,9 @@ namespace PocBattle.Runtime
             Publisher.PublishTurnEffects();
             Publisher.PublishBlockLayout(true);
             Publisher.PublishPlayerPositionSync();
-            // Keep edit input disabled until the shuffle presentation reaches authoritative cell centers.
-            RequestTransition(BattlePhase.PlacementEdit, PresentationSettings.BlockMoveDuration);
+            // Keep edit input disabled until the longest board placement tween reaches authoritative cell centers.
+            float layoutSettleDuration = Mathf.Max(PresentationSettings.BlockMoveDuration, PresentationSettings.BlockDropDuration);
+            RequestTransition(BattlePhase.PlacementEdit, layoutSettleDuration);
         }
     }
 }

@@ -7,29 +7,32 @@ using UnityEngine;
 namespace PocBattle.Runtime
 {
     /// <summary>
-    /// Battle composition root: owns pure runtime state and forwards cross-GameObject event requests into the state machine.
+    /// Stage-battle composition root. It owns only one battle runtime/state machine and can be driven by RunController.
     /// </summary>
     public sealed class BattleController : MonoBehaviour
     {
         [SerializeField, Tooltip("Board gameplay settings.")]
         private BattleBoardSettingsSO _boardSettings;
 
-        [SerializeField, Tooltip("Player base combat and per-turn resource stats.")]
+        [SerializeField, Tooltip("Player base combat and per-turn resource stats used only by standalone fallback mode.")]
         private PlayerBaseStatsSO _playerBaseStats;
 
         [SerializeField, Tooltip("Presentation tuning shared by battle states and views.")]
         private BattlePresentationSettingsSO _presentationSettings;
 
-        [SerializeField, Tooltip("Player deck whose complete block list is placed every player turn.")]
+        [SerializeField, Tooltip("Standalone fallback starting deck. RunController supplies its persistent runtime deck during normal POC play.")]
         private DeckDefinitionSO _deck;
 
-        [SerializeField, Tooltip("Current POC encounter definition.")]
+        [SerializeField, Tooltip("Standalone fallback encounter. RunController selects stage encounters during normal POC play.")]
         private EncounterDefinitionSO _encounter;
 
-        [SerializeField, Tooltip("Shared ScriptableObject event hub for all battle GameObjects.")]
+        [SerializeField, Tooltip("Shared ScriptableObject event hub for all battle/run GameObjects.")]
         private BattleEventChannelSO _eventChannel;
 
-        /// <summary>Pure runtime models/services for the current battle session.</summary>
+        [SerializeField, Tooltip("When enabled, BattleController starts the legacy single battle by itself. Run/stage patch disables this in the POC scene.")]
+        private bool _autoStartStandalone = true;
+
+        /// <summary>Pure runtime models/services for the current stage battle.</summary>
         private BattleRuntimeContext _runtimeContext;
 
         /// <summary>Current explicit battle state machine.</summary>
@@ -42,7 +45,7 @@ namespace PocBattle.Runtime
         private Coroutine _transitionCoroutine;
 
         /// <summary>
-        /// Subscribes only to event-channel requests; no other GameObject reference is required.
+        /// Subscribes only to battle request events; no RunController reverse reference is stored.
         /// </summary>
         private void OnEnable()
         {
@@ -59,12 +62,10 @@ namespace PocBattle.Runtime
             _eventChannel.EndPhaseRequested += HandleEndPhaseRequested;
             _eventChannel.PlayerMoveVisualCompleted += HandlePlayerMoveVisualCompleted;
             _eventChannel.BlockLayoutVisualCompleted += HandleBlockLayoutVisualCompleted;
-            _eventChannel.RestartRequested += HandleRestartRequested;
+            _eventChannel.RestartRequested += HandleLegacyRestartRequested;
         }
 
-        /// <summary>
-        /// Removes all event subscriptions when this battle root is disabled.
-        /// </summary>
+        /// <summary>Removes all event subscriptions when this battle root is disabled.</summary>
         private void OnDisable()
         {
             if (_eventChannel != null)
@@ -77,30 +78,48 @@ namespace PocBattle.Runtime
                 _eventChannel.EndPhaseRequested -= HandleEndPhaseRequested;
                 _eventChannel.PlayerMoveVisualCompleted -= HandlePlayerMoveVisualCompleted;
                 _eventChannel.BlockLayoutVisualCompleted -= HandleBlockLayoutVisualCompleted;
-                _eventChannel.RestartRequested -= HandleRestartRequested;
+                _eventChannel.RestartRequested -= HandleLegacyRestartRequested;
             }
 
             StopPendingTransition();
         }
 
         /// <summary>
-        /// Creates the first runtime battle after every scene object has had a chance to subscribe in OnEnable.
+        /// Preserves a safe standalone fallback until the run patch installer sets AutoStartStandalone to false.
         /// </summary>
         private void Start()
         {
-            InitializeBattle();
+            if (!_autoStartStandalone)
+            {
+                return;
+            }
+
+            ValidateStandaloneSerializedData();
+            PlayerRunModel standaloneRun = new PlayerRunModel(_playerBaseStats, _deck);
+            int randomSeed = _boardSettings.UseFixedRandomSeed ? _boardSettings.FixedRandomSeed : Environment.TickCount;
+            BeginStage(standaloneRun, _encounter, randomSeed);
         }
 
         /// <summary>
-        /// Validates required data, builds pure runtime objects, registers states, and begins the first player turn.
+        /// Starts one stage battle from persistent run progression. RunController is the only normal caller.
         /// </summary>
-        private void InitializeBattle()
+        public void BeginStage(PlayerRunModel runModel, EncounterDefinitionSO encounter, int randomSeed)
         {
-            ValidateSerializedData();
-            StopPendingTransition();
+            if (runModel == null)
+            {
+                throw new ArgumentNullException(nameof(runModel));
+            }
 
-            int randomSeed = _boardSettings.UseFixedRandomSeed ? _boardSettings.FixedRandomSeed : Environment.TickCount;
-            _runtimeContext = new BattleRuntimeContext(_boardSettings, _playerBaseStats, _deck, _encounter, randomSeed);
+            if (encounter == null)
+            {
+                throw new ArgumentNullException(nameof(encounter));
+            }
+
+            ValidateSharedSerializedData();
+            StopPendingTransition();
+            runModel.Player.ResetTransientForNewStage();
+
+            _runtimeContext = new BattleRuntimeContext(_boardSettings, runModel, encounter, randomSeed);
             _publisher = new BattlePresentationPublisher(_runtimeContext, _presentationSettings, _eventChannel);
             _stateMachine = BuildStateMachine();
 
@@ -113,9 +132,7 @@ namespace PocBattle.Runtime
             ChangeStateAndProcessTransition(BattlePhase.PlayerTurnSetup);
         }
 
-        /// <summary>
-        /// Creates and registers explicit state objects that reference the runtime context only through one-way ownership.
-        /// </summary>
+        /// <summary>Creates and registers explicit reusable state objects for the current stage battle.</summary>
         private BattleStateMachine BuildStateMachine()
         {
             BattleStateMachine stateMachine = new BattleStateMachine(_eventChannel.RaisePhaseChanged);
@@ -136,35 +153,21 @@ namespace PocBattle.Runtime
                 new EnemyTurnState(_runtimeContext, _presentationSettings, _eventChannel, _publisher));
             stateMachine.Register(
                 BattlePhase.Victory,
-                new BattleResultState(
-                    _runtimeContext,
-                    _presentationSettings,
-                    _eventChannel,
-                    _publisher,
-                    BattleResult.Victory));
+                new BattleResultState(_runtimeContext, _presentationSettings, _eventChannel, _publisher, BattleResult.Victory));
             stateMachine.Register(
                 BattlePhase.Defeat,
-                new BattleResultState(
-                    _runtimeContext,
-                    _presentationSettings,
-                    _eventChannel,
-                    _publisher,
-                    BattleResult.Defeat));
+                new BattleResultState(_runtimeContext, _presentationSettings, _eventChannel, _publisher, BattleResult.Defeat));
             return stateMachine;
         }
 
-        /// <summary>
-        /// Changes state and immediately consumes any value-only transition request produced by the entered state.
-        /// </summary>
+        /// <summary>Changes state and consumes transition requests produced by the entered state.</summary>
         private void ChangeStateAndProcessTransition(BattlePhase nextPhase)
         {
             _stateMachine.ChangeState(nextPhase);
             ProcessCurrentStateTransitionRequest();
         }
 
-        /// <summary>
-        /// Consumes a state's value-only transition request and applies it immediately or schedules it after presentation delay.
-        /// </summary>
+        /// <summary>Consumes a state's one-way transition request and schedules presentation delay when needed.</summary>
         private void ProcessCurrentStateTransitionRequest()
         {
             BattleStateBase currentState = _stateMachine?.CurrentState;
@@ -183,9 +186,7 @@ namespace PocBattle.Runtime
             _transitionCoroutine = StartCoroutine(ChangeStateAfterDelay(request.NextPhase, request.Delay));
         }
 
-        /// <summary>
-        /// Waits presentation time before applying an automatic battle phase transition.
-        /// </summary>
+        /// <summary>Waits presentation time before applying one automatic battle phase transition.</summary>
         private IEnumerator ChangeStateAfterDelay(BattlePhase nextPhase, float delay)
         {
             yield return new WaitForSeconds(delay);
@@ -193,9 +194,7 @@ namespace PocBattle.Runtime
             ChangeStateAndProcessTransition(nextPhase);
         }
 
-        /// <summary>
-        /// Stops a previous delayed transition during restart or when a new transition supersedes it.
-        /// </summary>
+        /// <summary>Stops any superseded delayed phase transition.</summary>
         private void StopPendingTransition()
         {
             if (_transitionCoroutine == null)
@@ -207,72 +206,56 @@ namespace PocBattle.Runtime
             _transitionCoroutine = null;
         }
 
-        /// <summary>
-        /// Forwards cardinal player input into the currently active state.
-        /// </summary>
+        /// <summary>Forwards cardinal input to the current battle state.</summary>
         private void HandleMoveInputRequested(Vector2Int direction)
         {
             _stateMachine?.CurrentState?.HandleMoveRequested(direction);
             ProcessCurrentStateTransitionRequest();
         }
 
-        /// <summary>
-        /// Forwards edit pointer coordinates into the currently active state.
-        /// </summary>
+        /// <summary>Forwards legacy clicked board coordinates to the current state.</summary>
         private void HandleBoardCellClicked(Vector2Int coordinate)
         {
             _stateMachine?.CurrentState?.HandleBoardCellClicked(coordinate);
             ProcessCurrentStateTransitionRequest();
         }
 
-        /// <summary>
-        /// Forwards placement-edit press into the currently active state.
-        /// </summary>
+        /// <summary>Forwards placement drag begin.</summary>
         private void HandlePlacementDragBeginRequested(Vector2Int coordinate)
         {
             _stateMachine?.CurrentState?.HandlePlacementDragBeginRequested(coordinate);
             ProcessCurrentStateTransitionRequest();
         }
 
-        /// <summary>
-        /// Forwards placement-edit drop into the currently active state.
-        /// </summary>
+        /// <summary>Forwards placement drag drop.</summary>
         private void HandlePlacementDragDropRequested(Vector2Int coordinate)
         {
             _stateMachine?.CurrentState?.HandlePlacementDragDropRequested(coordinate);
             ProcessCurrentStateTransitionRequest();
         }
 
-        /// <summary>
-        /// Forwards placement-edit drag cancellation into the currently active state.
-        /// </summary>
+        /// <summary>Forwards placement drag cancellation.</summary>
         private void HandlePlacementDragCancelRequested()
         {
             _stateMachine?.CurrentState?.HandlePlacementDragCancelRequested();
             ProcessCurrentStateTransitionRequest();
         }
 
-        /// <summary>
-        /// Forwards manual phase completion into the currently active state.
-        /// </summary>
+        /// <summary>Forwards manual phase completion.</summary>
         private void HandleEndPhaseRequested()
         {
             _stateMachine?.CurrentState?.HandleEndPhaseRequested();
             ProcessCurrentStateTransitionRequest();
         }
 
-        /// <summary>
-        /// Forwards PlayerMovement tween completion into the currently active state.
-        /// </summary>
+        /// <summary>Forwards PlayerMovement visual completion.</summary>
         private void HandlePlayerMoveVisualCompleted()
         {
             _stateMachine?.CurrentState?.HandlePlayerMoveVisualCompleted();
             ProcessCurrentStateTransitionRequest();
         }
 
-        /// <summary>
-        /// Forwards block layout tween completion so PlacementEditState can unlock the next drag only after visuals settle.
-        /// </summary>
+        /// <summary>Forwards authoritative block layout visual completion.</summary>
         private void HandleBlockLayoutVisualCompleted()
         {
             _stateMachine?.CurrentState?.HandleBlockLayoutVisualCompleted();
@@ -280,26 +263,36 @@ namespace PocBattle.Runtime
         }
 
         /// <summary>
-        /// Rebuilds pure battle runtime state while reusing already-instantiated view objects where possible.
+        /// Keeps the old single-battle restart request functional only while standalone auto-start mode is active.
         /// </summary>
-        private void HandleRestartRequested()
+        private void HandleLegacyRestartRequested()
         {
-            InitializeBattle();
+            if (!_autoStartStandalone)
+            {
+                return;
+            }
+
+            PlayerRunModel standaloneRun = new PlayerRunModel(_playerBaseStats, _deck);
+            int randomSeed = _boardSettings.UseFixedRandomSeed ? _boardSettings.FixedRandomSeed : Environment.TickCount;
+            BeginStage(standaloneRun, _encounter, randomSeed);
         }
 
-        /// <summary>
-        /// Fails fast when the editor installer or manual scene setup is missing required data references.
-        /// </summary>
-        private void ValidateSerializedData()
+        /// <summary>Validates data shared by both standalone and run-managed battle startup.</summary>
+        private void ValidateSharedSerializedData()
         {
-            if (_boardSettings == null
-                || _playerBaseStats == null
-                || _presentationSettings == null
-                || _deck == null
-                || _encounter == null
-                || _eventChannel == null)
+            if (_boardSettings == null || _presentationSettings == null || _eventChannel == null)
             {
-                throw new InvalidOperationException("BattleController is missing one or more required ScriptableObject references.");
+                throw new InvalidOperationException("BattleController is missing board, presentation, or event channel data.");
+            }
+        }
+
+        /// <summary>Validates only legacy standalone fallback data.</summary>
+        private void ValidateStandaloneSerializedData()
+        {
+            ValidateSharedSerializedData();
+            if (_playerBaseStats == null || _deck == null || _encounter == null)
+            {
+                throw new InvalidOperationException("BattleController standalone mode is missing player stats, deck, or encounter data.");
             }
         }
     }

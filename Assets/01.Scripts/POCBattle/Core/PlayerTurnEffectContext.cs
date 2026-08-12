@@ -9,7 +9,7 @@ namespace PocBattle.Core
     /// </summary>
     public sealed class PlayerTurnEffectContext : IBlockEffectReceiver
     {
-        /// <summary>Player model used only for immediate trap damage.</summary>
+        /// <summary>Player model used by immediate trap and healing effects.</summary>
         private readonly PlayerCombatModel _player;
 
         /// <summary>Accumulated attack for the current turn.</summary>
@@ -30,17 +30,13 @@ namespace PocBattle.Core
         /// <summary>Gets critical stack count.</summary>
         public int CriticalStacks => _criticalStacks;
 
-        /// <summary>
-        /// Creates a current-turn effect accumulator.
-        /// </summary>
+        /// <summary>Creates a current-turn effect accumulator.</summary>
         public PlayerTurnEffectContext(PlayerCombatModel player)
         {
             _player = player;
         }
 
-        /// <summary>
-        /// Clears all temporary collected effects at the start of each player turn.
-        /// </summary>
+        /// <summary>Clears all temporary collected effects at the start of each player turn.</summary>
         public void Reset()
         {
             _attack = 0;
@@ -48,40 +44,38 @@ namespace PocBattle.Core
             _criticalStacks = 0;
         }
 
-        /// <summary>
-        /// Adds attack from a collected attack block.
-        /// </summary>
+        /// <summary>Adds attack from a collected attack block.</summary>
         public void AddAttack(int amount)
         {
             _attack += Mathf.Max(0, amount);
         }
 
-        /// <summary>
-        /// Adds shield that will be granted during battle resolution.
-        /// </summary>
+        /// <summary>Adds shield that will be granted during battle resolution.</summary>
         public void AddPendingShield(int amount)
         {
             _pendingShield += Mathf.Max(0, amount);
         }
 
-        /// <summary>
-        /// Adds one or more repeated critical multiplier stacks.
-        /// </summary>
+        /// <summary>Adds one or more repeated critical multiplier stacks.</summary>
         public void AddCriticalStacks(int amount)
         {
             _criticalStacks += Mathf.Max(0, amount);
         }
 
-        /// <summary>
-        /// Applies trap damage immediately to player HP.
-        /// </summary>
+        /// <summary>Applies trap damage immediately to player HP.</summary>
         public void ApplyImmediateDamage(int amount)
         {
             _player.ApplyPureDamage(amount);
         }
 
+        /// <summary>Applies heal block recovery immediately to player HP.</summary>
+        public void ApplyImmediateHeal(int amount)
+        {
+            _player.Heal(amount);
+        }
+
         /// <summary>
-        /// Calculates final attack using repeated critical multiplication and rounds to the nearest integer.
+        /// Calculates final attack using repeated critical multiplication and rounds .5 away from zero.
         /// </summary>
         public int CalculateFinalDamage(float criticalMultiplier)
         {
