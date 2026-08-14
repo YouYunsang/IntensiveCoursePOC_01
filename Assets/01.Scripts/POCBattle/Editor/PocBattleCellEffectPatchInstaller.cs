@@ -123,6 +123,11 @@ namespace PocBattle.Editor
             serialized.FindProperty("_displayName").stringValue = "Direction Change";
             serialized.FindProperty("_displayColor").colorValue = Color.white;
             serialized.FindProperty("_displaySprite").objectReferenceValue = arrowSprite;
+            SerializedProperty visualOffset = serialized.FindProperty("_boardVisualOffset");
+            if (visualOffset != null && visualOffset.vector3Value == Vector3.zero)
+            {
+                visualOffset.vector3Value = new Vector3(0f, 0.4f, 0f);
+            }
             serialized.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(effect);
             return effect;
@@ -287,6 +292,14 @@ namespace PocBattle.Editor
             serialized.FindProperty("_cellEffectTriggerPulseScale").floatValue = 1.22f;
             serialized.FindProperty("_cellEffectTriggerPulseDuration").floatValue = 0.18f;
             serialized.FindProperty("_lootCellEffectScaleMultiplier").floatValue = 1.25f;
+            SerializedProperty dragLift = serialized.FindProperty("_cellEffectDragLiftHeight");
+            SerializedProperty dragLiftDuration = serialized.FindProperty("_cellEffectDragLiftDuration");
+            SerializedProperty dragScale = serialized.FindProperty("_cellEffectDragScale");
+            SerializedProperty dropDuration = serialized.FindProperty("_cellEffectDropDuration");
+            if (dragLift != null) dragLift.floatValue = 0.35f;
+            if (dragLiftDuration != null) dragLiftDuration.floatValue = 0.1f;
+            if (dragScale != null) dragScale.floatValue = 1.12f;
+            if (dropDuration != null) dropDuration.floatValue = 0.14f;
             serialized.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(settings);
         }

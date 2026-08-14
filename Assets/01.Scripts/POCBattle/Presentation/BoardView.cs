@@ -30,6 +30,9 @@ namespace PocBattle.Presentation
         [SerializeField, Tooltip("Generic 3D block prefab containing BlockView, TMP effect text, and a collider.")]
         private BlockView _blockPrefab;
 
+        /// <summary>Row-major cell view storage used for stage field highlighting without scene searches.</summary>
+        private BoardCellView[] _cellViews;
+
         /// <summary>Stable block id to reusable block view lookup.</summary>
         private Dictionary<int, BlockView> _blockViews;
 
@@ -47,6 +50,7 @@ namespace PocBattle.Presentation
         /// </summary>
         private void Awake()
         {
+            _cellViews = new BoardCellView[_boardSettings != null ? _boardSettings.Columns * _boardSettings.Rows : 0];
             _blockViews = new Dictionary<int, BlockView>();
             _activeLayoutIds = new HashSet<int>();
             _draggedBlockId = NO_DRAGGED_BLOCK_ID;
@@ -67,6 +71,8 @@ namespace PocBattle.Presentation
             _eventChannel.BlockDragVisualStarted += HandleBlockDragVisualStarted;
             _eventChannel.BlockDragPointerMoved += HandleBlockDragPointerMoved;
             _eventChannel.BlockHitVisualRequested += HandleBlockHitVisualRequested;
+            _eventChannel.StageFieldEffectLayoutChanged += HandleStageFieldEffectLayoutChanged;
+            _eventChannel.StageFieldEffectTriggeredVisualRequested += HandleStageFieldEffectTriggeredVisualRequested;
         }
 
         /// <summary>
@@ -80,6 +86,8 @@ namespace PocBattle.Presentation
                 _eventChannel.BlockDragVisualStarted -= HandleBlockDragVisualStarted;
                 _eventChannel.BlockDragPointerMoved -= HandleBlockDragPointerMoved;
                 _eventChannel.BlockHitVisualRequested -= HandleBlockHitVisualRequested;
+                _eventChannel.StageFieldEffectLayoutChanged -= HandleStageFieldEffectLayoutChanged;
+                _eventChannel.StageFieldEffectTriggeredVisualRequested -= HandleStageFieldEffectTriggeredVisualRequested;
             }
 
             _draggedBlockId = NO_DRAGGED_BLOCK_ID;
@@ -110,6 +118,7 @@ namespace PocBattle.Presentation
                     BoardCellView cellView = Instantiate(_cellPrefab, transform);
                     cellView.name = isCornerWall ? $"Wall_{column}_{row}" : $"Cell_{column}_{row}";
                     cellView.Configure(position, scale, color);
+                    _cellViews[row * _boardSettings.Columns + column] = cellView;
                 }
             }
         }
@@ -202,6 +211,110 @@ namespace PocBattle.Presentation
             }
 
             blockView.FollowDrag(worldPosition);
+        }
+
+        /// <summary>Applies fixed stage field highlights to the cached cell layer and clears any previous stage colors.</summary>
+        private void HandleStageFieldEffectLayoutChanged(IReadOnlyList<StageFieldEffectSnapshot> snapshots)
+        {
+            ClearStageFieldHighlights();
+            for (int snapshotIndex = 0; snapshotIndex < snapshots.Count; snapshotIndex++)
+            {
+                StageFieldEffectSnapshot snapshot = snapshots[snapshotIndex];
+                RowColumnActivationFieldEffectSO definition = snapshot.Definition;
+                if (definition == null)
+                {
+                    continue;
+                }
+
+                for (int row = 0; row < _boardSettings.Rows; row++)
+                {
+                    for (int column = 0; column < _boardSettings.Columns; column++)
+                    {
+                        Vector2Int coordinate = new Vector2Int(column, row);
+                        if (IsCornerWall(coordinate))
+                        {
+                            continue;
+                        }
+
+                        bool onRow = row == snapshot.SpecialRow;
+                        bool onColumn = column == snapshot.SpecialColumn;
+                        if (!onRow && !onColumn)
+                        {
+                            continue;
+                        }
+
+                        Color highlightColor = onRow && onColumn
+                            ? definition.IntersectionHighlightColor
+                            : onRow ? definition.RowHighlightColor : definition.ColumnHighlightColor;
+                        GetCellView(coordinate)?.SetFieldHighlight(
+                            highlightColor,
+                            definition.IdlePulseStrength,
+                            definition.IdlePulseDuration);
+                    }
+                }
+            }
+        }
+
+        /// <summary>Flashes every non-wall cell in the row/column actually activated by a direct block collision.</summary>
+        private void HandleStageFieldEffectTriggeredVisualRequested(StageFieldActivationSnapshot snapshot)
+        {
+            RowColumnActivationFieldEffectSO definition = snapshot.Definition;
+            if (definition == null)
+            {
+                return;
+            }
+
+            if (snapshot.ActivatesRow)
+            {
+                for (int column = 0; column < _boardSettings.Columns; column++)
+                {
+                    Vector2Int coordinate = new Vector2Int(column, snapshot.SpecialRow);
+                    if (!IsCornerWall(coordinate))
+                    {
+                        GetCellView(coordinate)?.PlayFieldActivationFlash(definition.ActivationFlashColor, definition.ActivationFlashDuration);
+                    }
+                }
+            }
+
+            if (snapshot.ActivatesColumn)
+            {
+                for (int row = 0; row < _boardSettings.Rows; row++)
+                {
+                    Vector2Int coordinate = new Vector2Int(snapshot.SpecialColumn, row);
+                    if (!IsCornerWall(coordinate)
+                        && !(snapshot.ActivatesRow && row == snapshot.SpecialRow))
+                    {
+                        GetCellView(coordinate)?.PlayFieldActivationFlash(definition.ActivationFlashColor, definition.ActivationFlashDuration);
+                    }
+                }
+            }
+        }
+
+        /// <summary>Clears stage field pulse/flash state from every cached board cell.</summary>
+        private void ClearStageFieldHighlights()
+        {
+            if (_cellViews == null)
+            {
+                return;
+            }
+
+            for (int cellIndex = 0; cellIndex < _cellViews.Length; cellIndex++)
+            {
+                _cellViews[cellIndex]?.ClearFieldHighlight();
+            }
+        }
+
+        /// <summary>Returns one row-major cached cell view without hierarchy searches.</summary>
+        private BoardCellView GetCellView(Vector2Int coordinate)
+        {
+            if (_cellViews == null
+                || coordinate.x < 0 || coordinate.x >= _boardSettings.Columns
+                || coordinate.y < 0 || coordinate.y >= _boardSettings.Rows)
+            {
+                return null;
+            }
+
+            return _cellViews[coordinate.y * _boardSettings.Columns + coordinate.x];
         }
 
         /// <summary>

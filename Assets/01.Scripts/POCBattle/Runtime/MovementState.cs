@@ -188,8 +188,49 @@ namespace PocBattle.Runtime
             StartSegment(nextResult, false);
         }
 
-        /// <summary>Applies one block exactly once and publishes all combat/presentation changes caused by it.</summary>
+        /// <summary>
+        /// Applies one direct collision first, then expands its stage field effect without recursion.
+        /// Every unique field-triggered block receives the same slime activation feedback before its effect is resolved.
+        /// </summary>
         private void ApplyBlockCollision(BlockRuntime block)
+        {
+            BlockCollisionPlan plan = Context.BlockCollisions.ResolveDirectCollision(block);
+            if (plan.OrderedBlocks.Count == 0)
+            {
+                return;
+            }
+
+            ApplySingleBlockEffect(plan.OrderedBlocks[0]);
+            if (!Context.Player.IsAlive)
+            {
+                return;
+            }
+
+            for (int fieldIndex = 0; fieldIndex < plan.FieldActivations.Count; fieldIndex++)
+            {
+                StageFieldActivation activation = plan.FieldActivations[fieldIndex];
+                RowColumnActivationFieldEffectRuntime runtime = activation.Runtime;
+                EventChannel.RaiseStageFieldEffectTriggeredVisualRequested(
+                    new StageFieldActivationSnapshot(
+                        runtime.RowColumnDefinition,
+                        runtime.SpecialRow,
+                        runtime.SpecialColumn,
+                        activation.ActivatesRow,
+                        activation.ActivatesColumn));
+            }
+
+            for (int blockIndex = 1; blockIndex < plan.OrderedBlocks.Count; blockIndex++)
+            {
+                ApplySingleBlockEffect(plan.OrderedBlocks[blockIndex]);
+                if (!Context.Player.IsAlive)
+                {
+                    return;
+                }
+            }
+        }
+
+        /// <summary>Applies one block effect once and publishes the exact combat/presentation deltas it caused.</summary>
+        private void ApplySingleBlockEffect(BlockRuntime block)
         {
             EventChannel.RaiseBlockHitVisualRequested(block.Id);
             int healthBeforeEffect = Context.Player.CurrentHealth;

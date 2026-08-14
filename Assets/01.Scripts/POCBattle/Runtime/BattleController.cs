@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using PocBattle.Core;
 using PocBattle.Data;
 using UnityEngine;
@@ -62,6 +63,7 @@ namespace PocBattle.Runtime
             _eventChannel.EndPhaseRequested += HandleEndPhaseRequested;
             _eventChannel.PlayerMoveVisualCompleted += HandlePlayerMoveVisualCompleted;
             _eventChannel.BlockLayoutVisualCompleted += HandleBlockLayoutVisualCompleted;
+            _eventChannel.CellEffectLayoutVisualCompleted += HandleCellEffectLayoutVisualCompleted;
             _eventChannel.RestartRequested += HandleLegacyRestartRequested;
         }
 
@@ -78,6 +80,7 @@ namespace PocBattle.Runtime
                 _eventChannel.EndPhaseRequested -= HandleEndPhaseRequested;
                 _eventChannel.PlayerMoveVisualCompleted -= HandlePlayerMoveVisualCompleted;
                 _eventChannel.BlockLayoutVisualCompleted -= HandleBlockLayoutVisualCompleted;
+                _eventChannel.CellEffectLayoutVisualCompleted -= HandleCellEffectLayoutVisualCompleted;
                 _eventChannel.RestartRequested -= HandleLegacyRestartRequested;
             }
 
@@ -105,25 +108,28 @@ namespace PocBattle.Runtime
         /// </summary>
         public void BeginStage(PlayerRunModel runModel, EncounterDefinitionSO encounter, int randomSeed)
         {
+            StageBattleSetup setup = new StageBattleSetup(encounter, Array.Empty<StageFieldEffectDefinitionSO>(), randomSeed);
+            BeginStage(runModel, setup);
+        }
+
+        /// <summary>Starts one stage battle from an immutable stage setup package.</summary>
+        public void BeginStage(PlayerRunModel runModel, StageBattleSetup stageSetup)
+        {
             if (runModel == null)
             {
                 throw new ArgumentNullException(nameof(runModel));
-            }
-
-            if (encounter == null)
-            {
-                throw new ArgumentNullException(nameof(encounter));
             }
 
             ValidateSharedSerializedData();
             StopPendingTransition();
             runModel.Player.ResetTransientForNewStage();
 
-            _runtimeContext = new BattleRuntimeContext(_boardSettings, runModel, encounter, randomSeed);
+            _runtimeContext = new BattleRuntimeContext(_boardSettings, runModel, stageSetup);
             _publisher = new BattlePresentationPublisher(_runtimeContext, _presentationSettings, _eventChannel);
             _stateMachine = BuildStateMachine();
 
             _eventChannel.RaiseBattleResultChanged(BattleResult.None);
+            _publisher.PublishStageFieldEffectLayout();
             _publisher.PublishEnemyPartySetup();
             _publisher.PublishAllEnemyPresentation();
             _publisher.PublishPlayerStatus();
@@ -259,6 +265,13 @@ namespace PocBattle.Runtime
         private void HandleBlockLayoutVisualCompleted()
         {
             _stateMachine?.CurrentState?.HandleBlockLayoutVisualCompleted();
+            ProcessCurrentStateTransitionRequest();
+        }
+
+        /// <summary>Forwards authoritative cell-effect edit layout visual completion.</summary>
+        private void HandleCellEffectLayoutVisualCompleted()
+        {
+            _stateMachine?.CurrentState?.HandleCellEffectLayoutVisualCompleted();
             ProcessCurrentStateTransitionRequest();
         }
 

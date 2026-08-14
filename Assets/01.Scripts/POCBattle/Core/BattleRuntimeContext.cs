@@ -10,6 +10,7 @@ namespace PocBattle.Core
     {
         /// <summary>Seed offset used to decorrelate cell-effect placement from block shuffle order.</summary>
         private const int CELL_EFFECT_RANDOM_SEED_SALT = 486187739;
+        private const int STAGE_FIELD_RANDOM_SEED_SALT = 923521;
 
         /// <summary>Remaining player moves in the current player turn.</summary>
         private int _remainingMoveCount;
@@ -25,6 +26,12 @@ namespace PocBattle.Core
 
         /// <summary>Gets player-owned cell-effect placement service for this stage battle.</summary>
         public CellEffectPlacementService CellEffectPlacementService { get; }
+
+        /// <summary>Gets fixed stage field-effect runtime service.</summary>
+        public StageFieldEffectService StageFieldEffects { get; }
+
+        /// <summary>Gets direct-collision expansion resolver for field-effect block chains.</summary>
+        public BlockCollisionResolver BlockCollisions { get; }
 
         /// <summary>Gets deterministic segment slide resolver.</summary>
         public GridMovementResolver MovementResolver { get; }
@@ -54,17 +61,19 @@ namespace PocBattle.Core
         public BattleRuntimeContext(
             BattleBoardSettingsSO boardSettings,
             PlayerRunModel runModel,
-            EncounterDefinitionSO encounter,
-            int randomSeed)
+            StageBattleSetup stageSetup)
         {
             Board = new BoardModel(boardSettings);
             Player = runModel.Player;
             TurnEffects = new PlayerTurnEffectContext(Player);
             BlockEffects = new BlockEffectResolver(TurnEffects);
-            EnemyParty = new EnemyPartyModel(encounter);
-            PlacementService = new BlockPlacementService(Board, boardSettings, runModel.Deck, encounter, randomSeed);
-            int cellEffectSeed = unchecked(randomSeed * 397 ^ CELL_EFFECT_RANDOM_SEED_SALT);
+            EnemyParty = new EnemyPartyModel(stageSetup.Encounter);
+            PlacementService = new BlockPlacementService(Board, boardSettings, runModel.Deck, stageSetup.Encounter, stageSetup.RandomSeed);
+            int cellEffectSeed = unchecked(stageSetup.RandomSeed * 397 ^ CELL_EFFECT_RANDOM_SEED_SALT);
             CellEffectPlacementService = new CellEffectPlacementService(Board, runModel.Deck, cellEffectSeed);
+            int stageFieldSeed = unchecked(stageSetup.RandomSeed * 7919 ^ STAGE_FIELD_RANDOM_SEED_SALT);
+            StageFieldEffects = new StageFieldEffectService(Board, stageSetup.FieldEffects, stageFieldSeed);
+            BlockCollisions = new BlockCollisionResolver(Board, StageFieldEffects);
             MovementResolver = new GridMovementResolver(Board);
             EnemyTurnResolver = new EnemyTurnResolver(Player, EnemyParty);
             ResetTurnResources();

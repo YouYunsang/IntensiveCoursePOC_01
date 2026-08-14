@@ -75,6 +75,19 @@ namespace PocBattle.Data
         [SerializeField, Tooltip("Scale multiplier used when a cell-effect deck item is shown as floating world loot.")]
         private float _lootCellEffectScaleMultiplier = 1.25f;
 
+        [Header("Cell Effect Edit Drag")]
+        [SerializeField, Tooltip("World-space height added while an editable cell effect is held by the mouse.")]
+        private float _cellEffectDragLiftHeight = 0.35f;
+
+        [SerializeField, Tooltip("Duration of the cell-effect lift tween when drag begins.")]
+        private float _cellEffectDragLiftDuration = 0.1f;
+
+        [SerializeField, Tooltip("Uniform scale multiplier applied while an editable cell effect is held.")]
+        private float _cellEffectDragScale = 1.12f;
+
+        [SerializeField, Tooltip("Duration used to move/drop/return a cell effect during placement editing.")]
+        private float _cellEffectDropDuration = 0.14f;
+
         [Header("Board Colors")]
         [SerializeField, Tooltip("Normal floor color.")]
         private Color _normalCellColor = new Color(0.12f, 0.12f, 0.14f, 1f);
@@ -233,6 +246,18 @@ namespace PocBattle.Data
         /// <summary>Gets floating loot scale multiplier for cell-effect items.</summary>
         public float LootCellEffectScaleMultiplier => _lootCellEffectScaleMultiplier;
 
+        /// <summary>Gets held cell-effect lift height.</summary>
+        public float CellEffectDragLiftHeight => _cellEffectDragLiftHeight;
+
+        /// <summary>Gets held cell-effect lift tween duration.</summary>
+        public float CellEffectDragLiftDuration => _cellEffectDragLiftDuration;
+
+        /// <summary>Gets held cell-effect scale multiplier.</summary>
+        public float CellEffectDragScale => _cellEffectDragScale;
+
+        /// <summary>Gets cell-effect drop/return duration.</summary>
+        public float CellEffectDropDuration => _cellEffectDropDuration;
+
         /// <summary>Gets normal floor color.</summary>
         public Color NormalCellColor => _normalCellColor;
 
@@ -344,6 +369,10 @@ namespace PocBattle.Data
             _cellEffectTriggerPulseScale = Mathf.Max(1f, _cellEffectTriggerPulseScale);
             _cellEffectTriggerPulseDuration = Mathf.Max(0.01f, _cellEffectTriggerPulseDuration);
             _lootCellEffectScaleMultiplier = Mathf.Max(0.1f, _lootCellEffectScaleMultiplier);
+            _cellEffectDragLiftHeight = Mathf.Max(0f, _cellEffectDragLiftHeight);
+            _cellEffectDragLiftDuration = Mathf.Max(0.01f, _cellEffectDragLiftDuration);
+            _cellEffectDragScale = Mathf.Max(1f, _cellEffectDragScale);
+            _cellEffectDropDuration = Mathf.Max(0.01f, _cellEffectDropDuration);
             _moveSecondsPerCell = Mathf.Max(0.01f, _moveSecondsPerCell);
             _invalidMoveDistance = Mathf.Max(0.01f, _invalidMoveDistance);
             _invalidMoveDuration = Mathf.Max(0.01f, _invalidMoveDuration);

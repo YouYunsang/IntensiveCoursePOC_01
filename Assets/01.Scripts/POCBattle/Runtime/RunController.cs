@@ -231,7 +231,8 @@ namespace PocBattle.Runtime
             int boardSeed = _boardSettings.UseFixedRandomSeed
                 ? unchecked(_boardSettings.FixedRandomSeed + _currentStageIndex * 1009)
                 : _boardSeedRandom.Next();
-            _battleController.BeginStage(_runModel, encounter, boardSeed);
+            StageBattleSetup stageSetup = new StageBattleSetup(encounter, stage.FieldEffects, boardSeed);
+            _battleController.BeginStage(_runModel, stageSetup);
 
             if (!keepTransitionPhase)
             {

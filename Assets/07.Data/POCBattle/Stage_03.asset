@@ -30,3 +30,5 @@ MonoBehaviour:
     _weight: 1
   - _block: {fileID: 11400000, guid: d6fd27f3de2f22d498191e581ac98633, type: 2}
     _weight: 2
+  _fieldEffects:
+  - {fileID: 11400000, guid: a791f203aea5e5b4b8ffde97cb402aab, type: 2}

@@ -25,6 +25,9 @@ namespace PocBattle.Runtime
         /// <summary>Reusable cell-effect snapshot list to avoid per-turn list allocations.</summary>
         private readonly List<CellEffectSnapshot> _cellEffectSnapshots;
 
+        /// <summary>Reusable stage-field snapshot list created once per battle initialization.</summary>
+        private readonly List<StageFieldEffectSnapshot> _stageFieldSnapshots;
+
         /// <summary>Reusable enemy setup list created once per battle initialization.</summary>
         private readonly List<EnemySetupSnapshot> _enemySetupSnapshots;
 
@@ -44,6 +47,7 @@ namespace PocBattle.Runtime
             _eventChannel = eventChannel;
             _blockSnapshots = new List<BlockSnapshot>(context.PlacementService.Blocks.Count);
             _cellEffectSnapshots = new List<CellEffectSnapshot>(context.CellEffectPlacementService.Effects.Count);
+            _stageFieldSnapshots = new List<StageFieldEffectSnapshot>(context.StageFieldEffects.Effects.Count);
             _enemySetupSnapshots = new List<EnemySetupSnapshot>(context.EnemyParty.Enemies.Count);
             _intentBuilder = new StringBuilder();
         }
@@ -102,7 +106,7 @@ namespace PocBattle.Runtime
         /// <summary>
         /// Publishes every current player-turn cell-effect coordinate and assigned direction.
         /// </summary>
-        public void PublishCellEffectLayout()
+        public void PublishCellEffectLayout(bool animate = false)
         {
             _cellEffectSnapshots.Clear();
             IReadOnlyList<CellEffectRuntime> effects = _context.CellEffectPlacementService.Effects;
@@ -117,7 +121,29 @@ namespace PocBattle.Runtime
                         effect.AssignedDirection));
             }
 
-            _eventChannel.RaiseCellEffectLayoutChanged(_cellEffectSnapshots);
+            _eventChannel.RaiseCellEffectLayoutChanged(_cellEffectSnapshots, animate);
+        }
+
+        /// <summary>Publishes fixed row/column field selections for this stage.</summary>
+        public void PublishStageFieldEffectLayout()
+        {
+            _stageFieldSnapshots.Clear();
+            IReadOnlyList<StageFieldEffectRuntime> fields = _context.StageFieldEffects.Effects;
+            for (int fieldIndex = 0; fieldIndex < fields.Count; fieldIndex++)
+            {
+                if (!(fields[fieldIndex] is RowColumnActivationFieldEffectRuntime rowColumnRuntime))
+                {
+                    continue;
+                }
+
+                _stageFieldSnapshots.Add(new StageFieldEffectSnapshot(
+                    rowColumnRuntime.Id,
+                    rowColumnRuntime.RowColumnDefinition,
+                    rowColumnRuntime.SpecialRow,
+                    rowColumnRuntime.SpecialColumn));
+            }
+
+            _eventChannel.RaiseStageFieldEffectLayoutChanged(_stageFieldSnapshots);
         }
 
         /// <summary>

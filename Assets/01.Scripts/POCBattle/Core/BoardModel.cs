@@ -182,6 +182,47 @@ namespace PocBattle.Core
             return true;
         }
 
+        /// <summary>Moves one editable player-owned cell effect while preserving its turn-assigned direction.</summary>
+        public bool TryMoveCellEffect(Vector2Int source, Vector2Int destination)
+        {
+            CellEffectRuntime sourceEffect = GetCellEffect(source);
+            if (sourceEffect == null || !CanPlaceCellEffect(destination))
+            {
+                return false;
+            }
+
+            int sourceIndex = ToIndex(source);
+            int destinationIndex = ToIndex(destination);
+            _cellEffects[sourceIndex] = null;
+            _cellEffects[destinationIndex] = sourceEffect;
+            sourceEffect.SetPlacement(destination, sourceEffect.AssignedDirection);
+            return true;
+        }
+
+        /// <summary>Swaps two player-owned cell effects while each effect keeps its current turn direction.</summary>
+        public bool TrySwapCellEffects(Vector2Int firstCoordinate, Vector2Int secondCoordinate)
+        {
+            CellEffectRuntime firstEffect = GetCellEffect(firstCoordinate);
+            CellEffectRuntime secondEffect = GetCellEffect(secondCoordinate);
+            if (firstEffect == null || secondEffect == null)
+            {
+                return false;
+            }
+
+            if (GetBlock(firstCoordinate) != null || GetBlock(secondCoordinate) != null)
+            {
+                return false;
+            }
+
+            int firstIndex = ToIndex(firstCoordinate);
+            int secondIndex = ToIndex(secondCoordinate);
+            _cellEffects[firstIndex] = secondEffect;
+            _cellEffects[secondIndex] = firstEffect;
+            firstEffect.SetPlacement(secondCoordinate, firstEffect.AssignedDirection);
+            secondEffect.SetPlacement(firstCoordinate, secondEffect.AssignedDirection);
+            return true;
+        }
+
         /// <summary>Updates the persistent player coordinate after a validated movement result.</summary>
         public void SetPlayerPosition(Vector2Int coordinate)
         {

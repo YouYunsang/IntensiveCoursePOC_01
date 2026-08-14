@@ -39,10 +39,16 @@ namespace PocBattle.Data
         [SerializeField, Tooltip("Weighted player deck-item candidates used for the post-battle loot drop.")]
         private WeightedBlockRewardEntry[] _lootPool = Array.Empty<WeightedBlockRewardEntry>();
 
+        [SerializeField, Tooltip("Stage-owned environmental field effects. They are fixed for the stage and are not player deck items.")]
+        private StageFieldEffectDefinitionSO[] _fieldEffects = Array.Empty<StageFieldEffectDefinitionSO>();
+
         /// <summary>Gets random encounter candidates.</summary>
         public IReadOnlyList<EncounterDefinitionSO> EncounterPool => _encounterPool;
 
         /// <summary>Gets weighted loot candidates.</summary>
         public IReadOnlyList<WeightedBlockRewardEntry> LootPool => _lootPool;
+
+        /// <summary>Gets stage-owned field effect definitions.</summary>
+        public IReadOnlyList<StageFieldEffectDefinitionSO> FieldEffects => _fieldEffects ?? Array.Empty<StageFieldEffectDefinitionSO>();
     }
 }

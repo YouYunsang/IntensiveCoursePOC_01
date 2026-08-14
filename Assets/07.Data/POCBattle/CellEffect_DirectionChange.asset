@@ -15,3 +15,4 @@ MonoBehaviour:
   _displayName: Direction Change
   _displayColor: {r: 1, g: 1, b: 1, a: 1}
   _displaySprite: {fileID: 21300000, guid: 12c1069440062744da623899172e883e, type: 3}
+  _boardVisualOffset: {x: 0, y: 0.4, z: 0}

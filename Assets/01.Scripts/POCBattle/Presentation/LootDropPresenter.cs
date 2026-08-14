@@ -19,14 +19,6 @@ namespace PocBattle.Presentation
         private const float LOOT_SCALE_PULSE_MULTIPLIER = 1.06f;
         private const float LOOT_GLOW_LOW_INTENSITY_RATIO = 0.55f;
 
-        /// <summary>Explicit active loot visual kind instead of separate visibility flags.</summary>
-        private enum LootVisualKind
-        {
-            None = 0,
-            Block = 1,
-            CellEffect = 2
-        }
-
         [SerializeField, Tooltip("Shared event hub used for loot appearance without direct RunController references.")]
         private BattleEventChannelSO _eventChannel;
 
@@ -60,9 +52,6 @@ namespace PocBattle.Presentation
         /// <summary>Reusable property block for the cell-effect loot plate.</summary>
         private MaterialPropertyBlock _platePropertyBlock;
 
-        /// <summary>Current active loot view kind.</summary>
-        private LootVisualKind _visualKind;
-
         /// <summary>Root transform currently animated by float/scale loops.</summary>
         private Transform _activeVisualTransform;
 
@@ -82,7 +71,6 @@ namespace PocBattle.Presentation
         private void Awake()
         {
             _platePropertyBlock = new MaterialPropertyBlock();
-            _visualKind = LootVisualKind.None;
         }
 
         /// <summary>Subscribes to loot visibility snapshots.</summary>
@@ -152,7 +140,6 @@ namespace PocBattle.Presentation
             _lootBlockView.SnapTo(basePosition);
             _activeVisualTransform = _lootBlockView.transform;
             _activeBaseScale = baseScale;
-            _visualKind = LootVisualKind.Block;
         }
 
         /// <summary>Configures the reusable arrow-on-plate reward for a cell-effect deck item.</summary>
@@ -170,7 +157,8 @@ namespace PocBattle.Presentation
                              * _presentationSettings.CellEffectFootprintRatio
                              * _presentationSettings.LootCellEffectScaleMultiplier;
             _lootCellEffectView.gameObject.SetActive(true);
-            _lootCellEffectView.Configure(definition, Vector2Int.left, basePosition + Vector3.up * _presentationSettings.CellEffectSurfaceOffset, iconSize);
+            _lootCellEffectView.Configure(definition, Vector2Int.left, iconSize);
+            _lootCellEffectView.SnapTo(basePosition + Vector3.up * _presentationSettings.CellEffectSurfaceOffset);
             _lootCellEffectView.transform.SetParent(_cellEffectLootRoot, true);
 
             Transform plateTransform = _cellEffectPlateRenderer.transform;
@@ -184,7 +172,6 @@ namespace PocBattle.Presentation
 
             _activeVisualTransform = _cellEffectLootRoot;
             _activeBaseScale = Vector3.one;
-            _visualKind = LootVisualKind.CellEffect;
         }
 
         /// <summary>Creates the block view lazily and reuses it across stages.</summary>
@@ -280,7 +267,6 @@ namespace PocBattle.Presentation
             }
 
             _activeVisualTransform = null;
-            _visualKind = LootVisualKind.None;
         }
 
         /// <summary>Hides the reusable block reward if it exists.</summary>

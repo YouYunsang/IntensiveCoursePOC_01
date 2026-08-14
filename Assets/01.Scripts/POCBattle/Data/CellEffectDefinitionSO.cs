@@ -16,6 +16,9 @@ namespace PocBattle.Data
         [SerializeField, Tooltip("World-space sprite rendered above the affected board cell.")]
         private Sprite _displaySprite;
 
+        [SerializeField, Tooltip("Per-effect world-space offset added after the shared board surface offset. Use Y to lift sprites above nearby blocks.")]
+        private Vector3 _boardVisualOffset = Vector3.zero;
+
         /// <summary>Gets the cell effect display name.</summary>
         public override string DisplayName => _displayName;
 
@@ -27,6 +30,9 @@ namespace PocBattle.Data
 
         /// <summary>Gets the sprite displayed on an affected board cell.</summary>
         public Sprite DisplaySprite => _displaySprite;
+
+        /// <summary>Gets the per-effect board visual offset.</summary>
+        public Vector3 BoardVisualOffset => _boardVisualOffset;
 
         /// <summary>Gets whether this effect requires a random cardinal direction when placed.</summary>
         public virtual bool RequiresRandomDirection => false;

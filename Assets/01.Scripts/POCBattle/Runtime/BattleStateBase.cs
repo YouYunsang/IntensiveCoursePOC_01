@@ -131,6 +131,13 @@ namespace PocBattle.Runtime
         }
 
         /// <summary>
+        /// Handles completion of an authoritative cell-effect edit layout/drop tween when meaningful for this state.
+        /// </summary>
+        public virtual void HandleCellEffectLayoutVisualCompleted()
+        {
+        }
+
+        /// <summary>
         /// Handles completion of PlayerMovement DOTween feedback when meaningful for this state.
         /// </summary>
         public virtual void HandlePlayerMoveVisualCompleted()

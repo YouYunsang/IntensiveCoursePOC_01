@@ -167,6 +167,7 @@ namespace PocBattle.Presentation
             if (TryGetBoardPlaneWorldPosition(pointerPosition, out Vector3 worldPosition))
             {
                 _eventChannel.RaiseBlockDragPointerMoved(worldPosition);
+                _eventChannel.RaiseCellEffectDragPointerMoved(worldPosition);
             }
         }
 
