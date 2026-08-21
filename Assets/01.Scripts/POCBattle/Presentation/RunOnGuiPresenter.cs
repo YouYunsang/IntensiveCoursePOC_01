@@ -31,8 +31,17 @@ namespace PocBattle.Presentation
         /// <summary>Current runtime deck discard rows.</summary>
         private DeckDiscardSelectionSnapshot _discardSnapshot;
 
-        /// <summary>Cached run status label rebuilt only when run status changes.</summary>
-        private string _runStatusLabel = "STAGE -/-   |   GOLD 0   |   DECK -/-";
+        /// <summary>Cached stage value rebuilt only when run status changes.</summary>
+        private string _stageStatusLabel = "- / -";
+
+        /// <summary>Cached gold value rebuilt only when run status changes.</summary>
+        private string _goldStatusLabel = "0";
+
+        /// <summary>Cached deck value rebuilt only when run status changes.</summary>
+        private string _deckStatusLabel = "- / -";
+
+        /// <summary>Cached one-based stage labels used by the development-only direct-jump buttons.</summary>
+        private string[] _debugStageLabels = System.Array.Empty<string>();
 
         /// <summary>Cached current loot effect label rebuilt only when loot changes.</summary>
         private string _lootLabel = "UNKNOWN REWARD";
@@ -58,6 +67,8 @@ namespace PocBattle.Presentation
         /// <summary>Cached GUI styles initialized lazily inside OnGUI.</summary>
         private GUIStyle _panelStyle;
         private GUIStyle _headerStyle;
+        private GUIStyle _runStatusTitleStyle;
+        private GUIStyle _runStatusValueStyle;
         private GUIStyle _bodyStyle;
         private GUIStyle _centerStyle;
         private GUIStyle _buttonStyle;
@@ -102,6 +113,9 @@ namespace PocBattle.Presentation
         {
             EnsureStyles();
             DrawRunStatus();
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            DrawStageDebugControls();
+#endif
             DrawLootInteraction();
             DrawTerminalPrompt();
             DrawFadeOverlay();
@@ -125,6 +139,20 @@ namespace PocBattle.Presentation
                 fontStyle = FontStyle.Bold,
                 alignment = TextAnchor.MiddleCenter
             };
+            _runStatusTitleStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = 14,
+                fontStyle = FontStyle.Bold,
+                alignment = TextAnchor.MiddleCenter,
+                wordWrap = false
+            };
+            _runStatusValueStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = 20,
+                fontStyle = FontStyle.Bold,
+                alignment = TextAnchor.MiddleCenter,
+                wordWrap = false
+            };
             _bodyStyle = new GUIStyle(GUI.skin.label)
             {
                 fontSize = 17,
@@ -144,7 +172,7 @@ namespace PocBattle.Presentation
             _selectedButtonStyle.normal.textColor = Color.yellow;
         }
 
-        /// <summary>Draws stage/gold/deck capacity information at the top center.</summary>
+        /// <summary>Draws stage, gold, and deck information in independent columns so no value can wrap into another row.</summary>
         private void DrawRunStatus()
         {
             if (_runPhase == RunPhase.None)
@@ -154,8 +182,102 @@ namespace PocBattle.Presentation
 
             Rect rect = RunOnGuiLayoutUtility.GetRunStatusRect();
             GUI.Box(rect, GUIContent.none, _panelStyle);
-            GUI.Label(new Rect(rect.x + 10f, rect.y + 6f, rect.width - 20f, rect.height - 12f), _runStatusLabel, _headerStyle);
+
+            const float horizontalPadding = 12f;
+            const float topPadding = 7f;
+            const float titleHeight = 20f;
+            const float valueHeight = 32f;
+            float contentWidth = Mathf.Max(1f, rect.width - horizontalPadding * 2f);
+            float columnWidth = contentWidth / 3f;
+            float contentX = rect.x + horizontalPadding;
+
+            DrawRunStatusColumn(contentX, rect.y + topPadding, columnWidth, titleHeight, valueHeight, "STAGE", _stageStatusLabel);
+            DrawRunStatusColumn(contentX + columnWidth, rect.y + topPadding, columnWidth, titleHeight, valueHeight, "GOLD", _goldStatusLabel);
+            DrawRunStatusColumn(contentX + columnWidth * 2f, rect.y + topPadding, columnWidth, titleHeight, valueHeight, "DECK", _deckStatusLabel);
+
+            DrawVerticalSeparator(contentX + columnWidth, rect.y + 10f, rect.height - 20f);
+            DrawVerticalSeparator(contentX + columnWidth * 2f, rect.y + 10f, rect.height - 20f);
         }
+
+        /// <summary>Draws one compact run-status column using separate title and value styles.</summary>
+        private void DrawRunStatusColumn(
+            float x,
+            float y,
+            float width,
+            float titleHeight,
+            float valueHeight,
+            string title,
+            string value)
+        {
+            GUI.Label(new Rect(x, y, width, titleHeight), title, _runStatusTitleStyle);
+            GUI.Label(new Rect(x, y + titleHeight - 1f, width, valueHeight), value, _runStatusValueStyle);
+        }
+
+        /// <summary>Draws a subtle one-pixel separator between persistent run-status columns.</summary>
+        private static void DrawVerticalSeparator(float x, float y, float height)
+        {
+            Color previousColor = GUI.color;
+            GUI.color = new Color(previousColor.r, previousColor.g, previousColor.b, previousColor.a * 0.35f);
+            GUI.DrawTexture(new Rect(x, y, 1f, Mathf.Max(1f, height)), Texture2D.whiteTexture);
+            GUI.color = previousColor;
+        }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        /// <summary>
+        /// Draws compact development-only stage navigation in the bottom-left corner.
+        /// All buttons emit one-based stage requests through the event channel and never mutate run models directly.
+        /// </summary>
+        private void DrawStageDebugControls()
+        {
+            if (_runPhase == RunPhase.None || _runStatus.TotalStages <= 0)
+            {
+                return;
+            }
+
+            Rect rect = RunOnGuiLayoutUtility.GetStageDebugRect();
+            GUI.Box(rect, GUIContent.none, _panelStyle);
+            GUI.Label(new Rect(rect.x + 10f, rect.y + 5f, rect.width - 20f, 22f), "STAGE DEBUG", _centerStyle);
+
+            const float horizontalPadding = 12f;
+            const float navigationGap = 6f;
+            const float buttonHeight = 32f;
+            float navigationY = rect.y + 35f;
+            float sideButtonWidth = Mathf.Clamp(rect.width * 0.18f, 62f, 84f);
+            float gridX = rect.x + horizontalPadding + sideButtonWidth + navigationGap;
+            float gridWidth = Mathf.Max(1f, rect.width - horizontalPadding * 2f - sideButtonWidth * 2f - navigationGap * 2f);
+            bool previousEnabled = GUI.enabled;
+
+            GUI.enabled = _runPhase != RunPhase.StageTransition && _runStatus.StageNumber > 1;
+            if (GUI.Button(new Rect(rect.x + horizontalPadding, navigationY, sideButtonWidth, buttonHeight), "< PREV", _buttonStyle))
+            {
+                _eventChannel?.RaiseDebugStageJumpRequested(_runStatus.StageNumber - 1);
+            }
+
+            GUI.enabled = _runPhase != RunPhase.StageTransition && _runStatus.StageNumber < _runStatus.TotalStages;
+            if (GUI.Button(
+                    new Rect(rect.x + rect.width - horizontalPadding - sideButtonWidth, navigationY, sideButtonWidth, buttonHeight),
+                    "NEXT >",
+                    _buttonStyle))
+            {
+                _eventChannel?.RaiseDebugStageJumpRequested(_runStatus.StageNumber + 1);
+            }
+
+            GUI.enabled = _runPhase != RunPhase.StageTransition;
+            if (_debugStageLabels != null && _debugStageLabels.Length > 0)
+            {
+                int columnCount = Mathf.Min(5, _debugStageLabels.Length);
+                Rect gridRect = new Rect(gridX, navigationY, gridWidth, buttonHeight);
+                int selectedIndex = Mathf.Clamp(_runStatus.StageNumber - 1, 0, _debugStageLabels.Length - 1);
+                int requestedIndex = GUI.SelectionGrid(gridRect, selectedIndex, _debugStageLabels, columnCount, _buttonStyle);
+                if (requestedIndex != selectedIndex)
+                {
+                    _eventChannel?.RaiseDebugStageJumpRequested(requestedIndex + 1);
+                }
+            }
+
+            GUI.enabled = previousEnabled;
+        }
+#endif
 
         /// <summary>Draws waiting guidance or the active reward/deck-selection modal during looting.</summary>
         private void DrawLootInteraction()
@@ -357,7 +479,18 @@ namespace PocBattle.Presentation
         private void HandleRunStatusChanged(RunStatusSnapshot snapshot)
         {
             _runStatus = snapshot;
-            _runStatusLabel = $"STAGE {snapshot.StageNumber}/{snapshot.TotalStages}   |   GOLD {snapshot.Gold}   |   DECK {snapshot.DeckCount}/{snapshot.DeckCapacity}";
+            _stageStatusLabel = $"{snapshot.StageNumber} / {snapshot.TotalStages}";
+            _goldStatusLabel = snapshot.Gold.ToString();
+            _deckStatusLabel = $"{snapshot.DeckCount} / {snapshot.DeckCapacity}";
+
+            if (_debugStageLabels == null || _debugStageLabels.Length != snapshot.TotalStages)
+            {
+                _debugStageLabels = new string[Mathf.Max(0, snapshot.TotalStages)];
+                for (int stageIndex = 0; stageIndex < _debugStageLabels.Length; stageIndex++)
+                {
+                    _debugStageLabels[stageIndex] = (stageIndex + 1).ToString();
+                }
+            }
         }
 
         /// <summary>Caches looting modal state.</summary>

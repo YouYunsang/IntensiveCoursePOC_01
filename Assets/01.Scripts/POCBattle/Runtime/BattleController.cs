@@ -138,6 +138,18 @@ namespace PocBattle.Runtime
             ChangeStateAndProcessTransition(BattlePhase.PlayerTurnSetup);
         }
 
+        /// <summary>
+        /// Stops the current stage battle without producing a result so an external run-level debug transition can safely replace it.
+        /// Pending delayed state changes are cancelled and late presentation callbacks become harmless until BeginStage creates a new runtime.
+        /// </summary>
+        public void AbortForExternalStageTransition()
+        {
+            StopPendingTransition();
+            _stateMachine = null;
+            _publisher = null;
+            _runtimeContext = null;
+        }
+
         /// <summary>Creates and registers explicit reusable state objects for the current stage battle.</summary>
         private BattleStateMachine BuildStateMachine()
         {

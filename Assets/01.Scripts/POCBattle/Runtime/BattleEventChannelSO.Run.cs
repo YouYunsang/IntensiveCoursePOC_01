@@ -53,6 +53,9 @@ namespace PocBattle.Runtime
         /// <summary>Raised by run-complete OnGUI. True starts a fresh run; false exits the application.</summary>
         public event Action<bool> RunCompleteDecisionRequested;
 
+        /// <summary>Raised by the development-only stage debug controls with a one-based target stage number.</summary>
+        public event Action<int> DebugStageJumpRequested;
+
         /// <summary>Raised exactly once when a living enemy becomes defeated, including its gold reward.</summary>
         public event Action<int, int> EnemyDefeated;
 
@@ -106,6 +109,9 @@ namespace PocBattle.Runtime
 
         /// <summary>Publishes run-complete restart/exit choice.</summary>
         public void RaiseRunCompleteDecisionRequested(bool restart) => RunCompleteDecisionRequested?.Invoke(restart);
+
+        /// <summary>Requests an immediate debug transition to a one-based run stage number.</summary>
+        public void RaiseDebugStageJumpRequested(int stageNumber) => DebugStageJumpRequested?.Invoke(stageNumber);
 
         /// <summary>Publishes one newly defeated enemy and its gold reward.</summary>
         public void RaiseEnemyDefeated(int enemyIndex, int goldReward) => EnemyDefeated?.Invoke(enemyIndex, goldReward);

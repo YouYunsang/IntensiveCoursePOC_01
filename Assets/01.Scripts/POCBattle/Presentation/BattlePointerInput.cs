@@ -214,10 +214,11 @@ namespace PocBattle.Presentation
         {
             Vector2 guiPointerPosition = new Vector2(pointerPosition.x, Screen.height - pointerPosition.y);
             return BattleOnGuiLayoutUtility.IsPointerOverVisibleGui(
-                guiPointerPosition,
-                _currentPhase,
-                _battleResult,
-                _activeEnemyCount);
+                       guiPointerPosition,
+                       _currentPhase,
+                       _battleResult,
+                       _activeEnemyCount)
+                   || RunOnGuiLayoutUtility.IsPointerOverPersistentGui(guiPointerPosition);
         }
 
         /// <summary>

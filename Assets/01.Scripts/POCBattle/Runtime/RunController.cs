@@ -24,7 +24,8 @@ namespace PocBattle.Runtime
     {
         None = 0,
         NextStage = 1,
-        RestartRun = 2
+        RestartRun = 2,
+        DebugStageJump = 3
     }
 
     /// <summary>
@@ -75,6 +76,9 @@ namespace PocBattle.Runtime
         /// <summary>Current stage transition purpose.</summary>
         private StageTransitionPurpose _transitionPurpose;
 
+        /// <summary>Zero-based target stage used only by an in-progress debug stage jump.</summary>
+        private int _debugTargetStageIndex;
+
         /// <summary>Independent random source used only for stage encounter selection.</summary>
         private System.Random _stageRandom;
 
@@ -113,6 +117,7 @@ namespace PocBattle.Runtime
             _lootInteractionPhase = LootInteractionPhase.None;
             _transitionStep = StageTransitionStep.None;
             _transitionPurpose = StageTransitionPurpose.None;
+            _debugTargetStageIndex = -1;
         }
 
         /// <summary>
@@ -138,6 +143,7 @@ namespace PocBattle.Runtime
             _eventChannel.BlockLayoutVisualCompleted += HandleBlockLayoutVisualCompleted;
             _eventChannel.RunRestartDecisionRequested += HandleRunRestartDecisionRequested;
             _eventChannel.RunCompleteDecisionRequested += HandleRunCompleteDecisionRequested;
+            _eventChannel.DebugStageJumpRequested += HandleDebugStageJumpRequested;
         }
 
         /// <summary>Removes every run-flow event subscription.</summary>
@@ -161,6 +167,7 @@ namespace PocBattle.Runtime
             _eventChannel.BlockLayoutVisualCompleted -= HandleBlockLayoutVisualCompleted;
             _eventChannel.RunRestartDecisionRequested -= HandleRunRestartDecisionRequested;
             _eventChannel.RunCompleteDecisionRequested -= HandleRunCompleteDecisionRequested;
+            _eventChannel.DebugStageJumpRequested -= HandleDebugStageJumpRequested;
         }
 
         /// <summary>
@@ -189,6 +196,7 @@ namespace PocBattle.Runtime
             _currentStageIndex = 0;
             _pendingLootDefinition = null;
             _lastDefeatedEnemyIndex = NO_ENEMY_INDEX;
+            _debugTargetStageIndex = -1;
             _enemyWorldAnchors.Clear();
             _selectedDiscardIds.Clear();
             SetLootInteractionPhase(LootInteractionPhase.None);
@@ -493,6 +501,17 @@ namespace PocBattle.Runtime
                 {
                     StartFreshRun(true);
                 }
+                else if (_transitionPurpose == StageTransitionPurpose.DebugStageJump)
+                {
+                    if (_debugTargetStageIndex < 0 || _debugTargetStageIndex >= _runDefinition.Stages.Count)
+                    {
+                        throw new InvalidOperationException("Debug stage transition reached fade-out completion without a valid target stage.");
+                    }
+
+                    _currentStageIndex = _debugTargetStageIndex;
+                    _debugTargetStageIndex = -1;
+                    BeginCurrentStageBattle(true);
+                }
                 else
                 {
                     throw new InvalidOperationException("Stage transition reached fade-out completion without a valid purpose.");
@@ -505,6 +524,7 @@ namespace PocBattle.Runtime
             {
                 _transitionStep = StageTransitionStep.None;
                 _transitionPurpose = StageTransitionPurpose.None;
+                _debugTargetStageIndex = -1;
                 SetRunPhase(RunPhase.Battle);
             }
         }
@@ -522,6 +542,44 @@ namespace PocBattle.Runtime
 
             _transitionStep = StageTransitionStep.WaitingForFadeIn;
             _eventChannel.RaiseStageFadeRequested(StageFadeDirection.In);
+        }
+
+        /// <summary>
+        /// Handles development-only direct stage navigation while preserving the current run deck, gold, and living HP.
+        /// A dead player is restored to full HP so a debug jump from the defeat screen can still start the requested stage.
+        /// </summary>
+        private void HandleDebugStageJumpRequested(int stageNumber)
+        {
+            if (_runModel == null
+                || _runDefinition == null
+                || _runPhase == RunPhase.None
+                || _runPhase == RunPhase.StageTransition)
+            {
+                return;
+            }
+
+            int targetIndex = stageNumber - 1;
+            if (targetIndex < 0
+                || targetIndex >= _runDefinition.Stages.Count
+                || targetIndex == _currentStageIndex)
+            {
+                return;
+            }
+
+            _battleController.AbortForExternalStageTransition();
+            _eventChannel.RaiseLootDropChanged(new LootDropSnapshot(false, null, Vector3.zero));
+            _pendingLootDefinition = null;
+            _lastDefeatedEnemyIndex = NO_ENEMY_INDEX;
+            _selectedDiscardIds.Clear();
+            SetLootInteractionPhase(LootInteractionPhase.None);
+
+            if (!_runModel.Player.IsAlive)
+            {
+                _runModel.Player.Heal(_runModel.Player.MaxHealth);
+            }
+
+            _debugTargetStageIndex = targetIndex;
+            BeginStageTransition(StageTransitionPurpose.DebugStageJump);
         }
 
         /// <summary>
